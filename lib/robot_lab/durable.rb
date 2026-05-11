@@ -22,3 +22,7 @@ end
 if defined?(RobotLab::Robot)
   RobotLab::Robot.include(RobotLab::Durable::Learning)
 end
+
+if defined?(RobotLab) && RobotLab.respond_to?(:register_extension)
+  RobotLab.register_extension(:durable, RobotLab::Durable)
+end
