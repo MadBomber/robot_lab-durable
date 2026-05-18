@@ -22,12 +22,12 @@ module RobotLab
           now = Time.now.iso8601
           @store.record(
             Entry.new(
-              content:    text,
-              reasoning:  "Observed during session (auto-promoted by Reflector)",
-              category:   :pattern,
-              domain:     @domain,
+              content: text,
+              reasoning: 'Observed during session (auto-promoted by Reflector)',
+              category: :pattern,
+              domain: @domain,
               confidence: 0.1,
-              use_count:  0,
+              use_count: 0,
               created_at: now,
               updated_at: now
             )

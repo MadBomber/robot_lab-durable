@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require "yaml"
-require "fileutils"
+require 'yaml'
+require 'fileutils'
 
 module RobotLab
   module Durable
     class Store
-      DEFAULT_PATH = File.join(Dir.home, ".robot_lab", "durable")
+      DEFAULT_PATH = File.join(Dir.home, '.robot_lab', 'durable')
 
       MIN_WORD_LENGTH = 3
 
@@ -77,13 +77,13 @@ module RobotLab
         file = domain_file(domain)
         return [] unless File.exist?(file)
 
-        raw = Array(YAML.safe_load(File.read(file)) || [])
+        raw = Array(YAML.safe_load_file(file) || [])
         raw.map { |h| Entry.from_h(h) }
       end
 
       def load_all
-        Dir.glob(File.join(@path, "*.yaml")).flat_map do |file|
-          raw = Array(YAML.safe_load(File.read(file)) || [])
+        Dir.glob(File.join(@path, '*.yaml')).flat_map do |file|
+          raw = Array(YAML.safe_load_file(file) || [])
           raw.map { |h| Entry.from_h(h) }
         end
       end
@@ -97,18 +97,19 @@ module RobotLab
           entries = load_domain(entry.domain)
           idx     = entries.find_index { |e| e.content.downcase == entry.content.downcase }
           raise RobotLab::Error, "Cannot confirm: entry not found in domain '#{entry.domain}'" unless idx
+
           entries[idx] = entry
           save_domain(entry.domain, entries)
         end
       end
 
       def domain_file(domain)
-        safe = domain.to_s.downcase.gsub(/[^a-z0-9]+/, "_").delete_prefix("_").delete_suffix("_")
+        safe = domain.to_s.downcase.gsub(/[^a-z0-9]+/, '_').delete_prefix('_').delete_suffix('_')
         File.join(@path, "#{safe}.yaml")
       end
 
       def with_domain_lock(domain, &block)
-        lock_path = domain_file(domain) + ".lock"
+        lock_path = "#{domain_file(domain)}.lock"
         File.open(lock_path, File::RDWR | File::CREAT, 0o644) do |f|
           f.flock(File::LOCK_EX)
           block.call
