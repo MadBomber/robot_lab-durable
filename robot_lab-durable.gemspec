@@ -38,5 +38,5 @@ Gem::Specification.new do |spec|
   # robot_lab is required at runtime for the Learning mixin, RecallKnowledge,
   # and RecordKnowledge tools. The pure storage layer (Entry, Store, Reflector)
   # works standalone when robot_lab is not loaded.
-  spec.add_dependency 'robot_lab'
+  spec.add_dependency 'robot_lab', '~> 0.2.0'
 end

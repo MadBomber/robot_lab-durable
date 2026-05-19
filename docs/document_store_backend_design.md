@@ -34,8 +34,8 @@ Once `robot_lab-document_store` gains a `DocumentStore::FileSystem` backend, dur
 
 ## Versioning
 
-- `robot_lab-document_store` must ship `DocumentStore::FileSystem` first — that is a v0.2.0 breaking change for that gem.
-- This gem (`robot_lab-durable`) then bumps to v0.2.0 once it drops `Store` and depends on document_store.
+- `robot_lab-document_store` must ship `DocumentStore::FileSystem` first — that is a v0.3.0 breaking change for that gem (v0.2.1 is the current release).
+- This gem (`robot_lab-durable`) then bumps to v0.3.0 once it drops `Store` and depends on document_store.
 
 ## See Also
 
