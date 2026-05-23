@@ -4,6 +4,8 @@ source 'https://rubygems.org'
 
 gemspec
 
+gem 'robot_lab', path: '../robot_lab'
+
 group :development, :test do
   gem 'debug_me'
   gem 'flog'

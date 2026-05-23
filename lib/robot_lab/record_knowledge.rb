@@ -14,22 +14,26 @@ module RobotLab
     param :domain,    type: 'string', desc: "Topic area this applies to (e.g. 'newsletter curation', 'ruby tooling')"
 
     def execute(content:, reasoning:, category:, domain:)
-      store = robot&.durable_store
-      return 'No durable store configured on this robot.' unless store
+      session = RobotLab::Durable::Hook.current_session
+      return 'No durable session active on this robot.' unless session
 
-      now = Time.now.iso8601
+      now   = Time.now.iso8601
       entry = Durable::Entry.new(
         content:,
         reasoning:,
-        category: category.to_sym,
+        category:   category.to_sym,
         domain:,
         confidence: 0.1,
-        use_count: 0,
+        use_count:  0,
         created_at: now,
         updated_at: now
       )
 
-      store.record(entry)
+      # Write to the store with full metadata. Suppressing on_learn during
+      # robot.learn() prevents a second generic write from the hook.
+      RobotLab::Durable::Hook.skip_persist { session[:store].record(entry) }
+
+      # Update session memory so subsequent LLM calls in this run see the fact.
       robot.learn("#{content} (#{domain})")
 
       "Recorded: #{content}"

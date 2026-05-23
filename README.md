@@ -9,8 +9,8 @@ Cross-session durable learning for the [RobotLab](https://github.com/MadBomber/r
 
 - **`Durable::Entry`** — immutable, confidence-tracked knowledge record
 - **`Durable::Store`** — YAML-backed, file-locked per-domain knowledge persistence in `~/.robot_lab/durable/`
-- **`Durable::Reflector`** — promotes session-level learnings into the durable store at end-of-run
-- **`Durable::Learning`** — mixin included into `RobotLab::Robot`; enabled via `learn: true, learn_domain:` constructor params
+- **`Durable::Hook`** — hook handler that wires durable learning into the RobotLab lifecycle
+- **`Durable::Reflector`** — batch promoter for migrating session learnings into the store (manual / migration use)
 - **`RecallKnowledge`** tool — lets robots query the durable store before making decisions
 - **`RecordKnowledge`** tool — lets robots write new knowledge during a session
 
@@ -30,44 +30,82 @@ require "robot_lab"
 require "robot_lab/durable"
 
 robot = RobotLab.build(
-  name: "advisor",
+  name:         "advisor",
   system_prompt: "You are a financial advisor that learns from each session.",
-  learn: true,
-  learn_domain: "finance"
+  local_tools:  [RobotLab::RecallKnowledge, RobotLab::RecordKnowledge]
 )
 
-# RecallKnowledge and RecordKnowledge tools are automatically available.
-# At the end of each run, the Reflector promotes learned facts to
-# ~/.robot_lab/durable/finance.yml for use in future sessions.
+# Enable durable learning for this robot, scoped to the "finance" domain.
+robot.on(RobotLab::Durable::Hook, context: { domain: "finance" })
+
+# Each run seeds the robot with past knowledge from ~/.robot_lab/durable/finance.yml,
+# and any new learnings are persisted back to that file automatically.
 result = robot.run("What do you know about my risk tolerance?")
 puts result.last_text_content
 ```
 
 ## How It Works
 
-When `learn: true` and `learn_domain:` are set, the robot gains two built-in tools:
+`RobotLab::Durable::Hook` is a RobotLab hook handler that plugs into the `:run` and `:learn`
+lifecycle events:
 
-- **`RecallKnowledge`** — queries the domain's YAML store for relevant past knowledge before responding
-- **`RecordKnowledge`** — writes new knowledge entries during a session
+- **`around_run`** — opens the domain's YAML store, seeds past knowledge into the robot's session
+  memory via `robot.learn()`, executes the run, then tears down the session in `ensure` so state
+  never leaks across run boundaries.
 
-At the end of each run, `Durable::Reflector` promotes session-level learnings into the persistent store with confidence scoring and deduplication.
+- **`on_learn`** — fires after each new session learning is stored in memory. Persists the text
+  immediately to the domain's YAML store with a baseline confidence score.
+
+### Enabling on a robot
+
+```ruby
+robot.on(RobotLab::Durable::Hook, context: { domain: "finance" })
+```
+
+The `context:` hash is merged into the hook's namespace-isolated state on each call:
+
+| Key | Required | Description |
+|-----|----------|-------------|
+| `domain` | yes | Topic area; maps to `~/.robot_lab/durable/<domain>.yml` |
+| `store_path` | no | Override the default store directory |
+
+Without a `domain`, `around_run` is a no-op — the hook silently yields without setting up storage.
+
+### Enabling globally (all robots)
+
+```ruby
+RobotLab.on(RobotLab::Durable::Hook, context: { domain: "shared" })
+```
+
+### Preventing double-writes
+
+`RecordKnowledge` writes a rich `Entry` directly to the store (with category, reasoning, and
+confidence) and then calls `robot.learn()` to update session memory. To prevent `on_learn`
+from writing a second, generic entry for the same fact, `RecordKnowledge` wraps its store write
+in `Hook.skip_persist { }`.
+
+The same mechanism protects the seeding phase in `around_run`: past learnings are fed back into
+`robot.learn()` without re-persisting them.
 
 ## Knowledge Persistence
 
 ```
 ~/.robot_lab/durable/
-  finance.yml       # per-domain YAML store
-  support.yml
+  finance.yml           # per-domain YAML store
+  xyzzy_stock_prediction.yml
   ...
 ```
 
-Each entry records: `content`, `confidence`, `category`, `domain`, `use_count`, `created_at`, and `updated_at`.
-
-Knowledge confidence grows as the same fact is recalled and confirmed across sessions. Low-confidence entries are pruned automatically over time.
+Each entry records: `content`, `confidence`, `category`, `domain`, `reasoning`, `use_count`,
+`created_at`, and `updated_at`. Knowledge confidence grows as the same fact is recalled and
+confirmed across sessions.
 
 ## Relationship to `robot.learn()`
 
-`robot.learn()` is a core RobotLab method that accumulates observations within a single session in memory. `robot_lab-durable` extends this by persisting those observations to disk across sessions, making the robot's learning accumulate over its lifetime rather than resetting each run.
+`robot.learn()` is a core RobotLab method that accumulates observations within a single session.
+`robot_lab-durable` extends this: whenever `on_learn` fires and a durable session is active, the
+new text is immediately persisted. At the start of the next session `around_run` re-seeds those
+facts, so the robot's learning accumulates over its lifetime rather than resetting each run.
 
 ## Links
 

@@ -229,10 +229,11 @@ robot      = RobotLab.build(
                    4. If you observe a reliable pattern, call RecordKnowledge to preserve it.
                    5. When uncertain, do nothing rather than guess.
                PROMPT
-               local_tools:   [AdjustParameters],
-               learn:         true,
-               learn_domain:  "xyzzy stock prediction"
+               local_tools:   [AdjustParameters,
+                                RobotLab::RecallKnowledge,
+                                RobotLab::RecordKnowledge]
              )
+robot.on(RobotLab::Durable::Hook, context: { domain: "xyzzy stock prediction" })
 
 warmed_up    = false
 pending_pred = nil  # { prediction: {high:, low:}, window_prices: [] }

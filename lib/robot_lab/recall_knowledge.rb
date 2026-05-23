@@ -11,10 +11,11 @@ module RobotLab
     param :domain, type: 'string', desc: "Topic area to search (e.g. 'newsletter curation')", required: false
 
     def execute(query:, domain: nil)
-      store = robot&.durable_store
-      return 'No durable store configured on this robot.' unless store
+      session = RobotLab::Durable::Hook.current_session
+      return 'No durable session active on this robot.' unless session
 
-      entries = store.recall(query: query, domain: domain, min_confidence: 0.0)
+      search_domain = domain || session[:domain]
+      entries       = session[:store].recall(query: query, domain: search_domain, min_confidence: 0.0)
 
       if entries.empty?
         "No relevant past knowledge found for: #{query}. When in doubt, skip."
@@ -22,7 +23,6 @@ module RobotLab
         lines = entries.map do |e|
           "[#{e.category}/conf:#{format('%.1f', e.confidence)}] #{e.content} — #{e.reasoning}"
         end
-
         "Relevant past knowledge:\n#{lines.join("\n")}"
       end
     end
