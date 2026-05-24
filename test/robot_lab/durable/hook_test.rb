@@ -4,194 +4,111 @@ require 'test_helper'
 
 module RobotLab
   module Durable
+    # Lightweight adapter double — no PostgreSQL required.
+    class FakeAdapter
+      attr_reader :records, :recalls
+
+      def initialize
+        @records = []
+        @recalls = []
+      end
+
+      def record(content:, reasoning: nil, category: 'fact')
+        @records << { content: content, reasoning: reasoning, category: category.to_s }
+        @records.size
+      end
+
+      def recall(query:, **)
+        @recalls << query
+        []
+      end
+    end
+
     class HookTest < Minitest::Test
       def setup
-        @store_dir = Dir.mktmpdir('durable_hook_test')
-        @store     = Store.new(path: @store_dir)
-        @robot     = build_robot
-        Thread.current[:robot_lab_durable_session]      = nil
-        Thread.current[:robot_lab_durable_skip_persist] = nil
+        Thread.current[:robot_lab_durable_adapter] = nil
+        @robot        = build_robot
+        @fake_adapter = FakeAdapter.new
       end
 
       def teardown
-        Thread.current[:robot_lab_durable_session]      = nil
-        Thread.current[:robot_lab_durable_skip_persist] = nil
-        FileUtils.rm_rf(@store_dir)
+        Thread.current[:robot_lab_durable_adapter] = nil
       end
 
-      # ── current_session ──────────────────────────────────────────────────────
+      # ── current_adapter ──────────────────────────────────────────────────────
 
-      def test_current_session_is_nil_by_default
-        assert_nil Hook.current_session
+      def test_current_adapter_is_nil_by_default
+        assert_nil Hook.current_adapter
       end
 
-      def test_current_session_returns_session_when_set
-        Thread.current[:robot_lab_durable_session] = { store: @store, domain: 'test' }
-        refute_nil Hook.current_session
-        assert_equal 'test', Hook.current_session[:domain]
-      end
-
-      # ── skip_persist ─────────────────────────────────────────────────────────
-
-      def test_skip_persist_suppresses_on_learn_for_block_duration
-        Thread.current[:robot_lab_durable_session] = { store: @store, domain: 'test' }
-        ctx = learn_ctx(text: 'suppressed', stored: true)
-
-        Hook.skip_persist { Hook.on_learn(ctx) }
-
-        assert_empty @store.recall(query: 'suppressed', domain: 'test', min_confidence: 0.0)
-      end
-
-      def test_skip_persist_clears_flag_after_block
-        Hook.skip_persist { nil }
-        assert_nil Thread.current[:robot_lab_durable_skip_persist]
-      end
-
-      def test_skip_persist_clears_flag_even_when_block_raises
-        assert_raises(RuntimeError) { Hook.skip_persist { raise 'boom' } }
-        assert_nil Thread.current[:robot_lab_durable_skip_persist]
-      end
-
-      # ── on_learn ─────────────────────────────────────────────────────────────
-
-      def test_on_learn_persists_new_learning_when_session_active
-        Thread.current[:robot_lab_durable_session] = { store: @store, domain: 'cooking' }
-        ctx = learn_ctx(text: 'always salt pasta water', stored: true)
-
-        Hook.on_learn(ctx)
-
-        entries = @store.recall(query: 'pasta', domain: 'cooking', min_confidence: 0.0)
-        assert_equal 1, entries.size
-        assert_equal 'always salt pasta water', entries.first.content
-        assert_equal :pattern, entries.first.category
-        assert_equal 'cooking', entries.first.domain
-      end
-
-      def test_on_learn_skips_when_stored_false
-        Thread.current[:robot_lab_durable_session] = { store: @store, domain: 'cooking' }
-        ctx = learn_ctx(text: 'salt pasta water', stored: false)
-
-        Hook.on_learn(ctx)
-
-        assert_empty @store.recall(query: 'salt', domain: 'cooking', min_confidence: 0.0)
-      end
-
-      def test_on_learn_skips_when_no_session
-        ctx = learn_ctx(text: 'orphaned learning', stored: true)
-
-        Hook.on_learn(ctx)  # no session set — should be a no-op
-      end
-
-      def test_on_learn_skips_when_skip_persist_active
-        Thread.current[:robot_lab_durable_session]      = { store: @store, domain: 'cooking' }
-        Thread.current[:robot_lab_durable_skip_persist] = true
-        ctx = learn_ctx(text: 'suppressed', stored: true)
-
-        Hook.on_learn(ctx)
-
-        assert_empty @store.recall(query: 'suppressed', domain: 'cooking', min_confidence: 0.0)
+      def test_current_adapter_returns_adapter_when_set
+        Thread.current[:robot_lab_durable_adapter] = @fake_adapter
+        assert_same @fake_adapter, Hook.current_adapter
       end
 
       # ── around_run ───────────────────────────────────────────────────────────
 
-      def test_around_run_sets_session_for_duration_of_block
-        session_during_run = nil
-        run_ctx = around_run_ctx(domain: 'finance')
-
-        Hook.around_run(run_ctx) { session_during_run = Hook.current_session }
-
-        refute_nil session_during_run
-        assert_equal 'finance', session_during_run[:domain]
+      def test_around_run_sets_adapter_during_block
+        adapter_during_run = nil
+        run_with_fake_adapter { adapter_during_run = Hook.current_adapter }
+        refute_nil adapter_during_run
+        assert_same @fake_adapter, adapter_during_run
       end
 
-      def test_around_run_clears_session_after_block
-        run_ctx = around_run_ctx(domain: 'finance')
-        Hook.around_run(run_ctx) { nil }
-        assert_nil Hook.current_session
+      def test_around_run_clears_adapter_after_block
+        run_with_fake_adapter { nil }
+        assert_nil Hook.current_adapter
       end
 
-      def test_around_run_clears_session_when_block_raises
-        run_ctx = around_run_ctx(domain: 'finance')
-        assert_raises(RuntimeError) { Hook.around_run(run_ctx) { raise 'boom' } }
-        assert_nil Hook.current_session
+      def test_around_run_clears_adapter_when_block_raises
+        assert_raises(RuntimeError) { run_with_fake_adapter { raise 'boom' } }
+        assert_nil Hook.current_adapter
       end
 
-      def test_around_run_skips_setup_when_no_domain
-        called = false
-        run_ctx = around_run_ctx(domain: nil)
+      # ── on_learn ─────────────────────────────────────────────────────────────
 
-        Hook.around_run(run_ctx) { called = true }
-
-        assert called
-        assert_nil Hook.current_session
+      def test_on_learn_records_when_stored_and_adapter_active
+        Thread.current[:robot_lab_durable_adapter] = @fake_adapter
+        Hook.on_learn(learn_ctx(text: 'Always freeze string literals', stored: true))
+        assert_equal 1, @fake_adapter.records.size
+        assert_equal 'Always freeze string literals', @fake_adapter.records.first[:content]
+        assert_equal 'observation', @fake_adapter.records.first[:category]
       end
 
-      def test_around_run_uses_custom_store_path
-        custom_dir = Dir.mktmpdir('custom_store')
-        run_ctx    = around_run_ctx(domain: 'ops', store_path: custom_dir)
-        session_during_run = nil
-
-        Hook.around_run(run_ctx) { session_during_run = Hook.current_session }
-
-        assert_equal custom_dir, session_during_run[:store].instance_variable_get(:@path)
-      ensure
-        FileUtils.rm_rf(custom_dir)
+      def test_on_learn_skips_when_stored_false
+        Thread.current[:robot_lab_durable_adapter] = @fake_adapter
+        Hook.on_learn(learn_ctx(text: 'duplicate', stored: false))
+        assert_empty @fake_adapter.records
       end
 
-      # ── seeding ──────────────────────────────────────────────────────────────
-
-      def test_around_run_seeds_past_learnings_into_robot
-        seed_entry('always document APIs', 'ruby', @store)
-        run_ctx = around_run_ctx(domain: 'ruby')
-
-        Hook.around_run(run_ctx) { nil }
-
-        assert(@robot.learnings.any? { |l| l.include?('always document APIs') })
+      def test_on_learn_skips_when_no_adapter_active
+        Hook.on_learn(learn_ctx(text: 'orphan', stored: true))
+        # No adapter set — should be a no-op, not raise
       end
 
-      def test_seeded_learnings_are_not_repersisted_by_on_learn
-        seed_entry('keep it simple', 'ruby', @store)
-        run_ctx = around_run_ctx(domain: 'ruby')
-        initial_count = @store.recall(query: 'simple', domain: 'ruby', min_confidence: 0.0).size
+      # ── integration: on_learn inside around_run ───────────────────────────────
 
-        Hook.around_run(run_ctx) { nil }
-
-        after_count = @store.recall(query: 'simple', domain: 'ruby', min_confidence: 0.0).size
-        assert_equal initial_count, after_count, 'seeded entry should not be re-persisted'
-      end
-
-      # ── integration: full learn cycle ─────────────────────────────────────────
-
-      def test_new_learning_during_run_is_persisted_to_store
-        run_ctx = around_run_ctx(domain: 'cooking')
-
-        Hook.around_run(run_ctx) do
-          ctx = learn_ctx(text: 'blanch vegetables before freezing', stored: true)
-          Hook.on_learn(ctx)
+      def test_learning_during_run_is_persisted
+        run_with_fake_adapter do
+          Hook.on_learn(learn_ctx(text: 'blanch before freezing', stored: true))
         end
-
-        entries = @store.recall(query: 'blanch', domain: 'cooking', min_confidence: 0.0)
-        assert_equal 1, entries.size
-        assert_equal 'blanch vegetables before freezing', entries.first.content
+        assert_equal 1, @fake_adapter.records.size
+        assert_equal 'blanch before freezing', @fake_adapter.records.first[:content]
       end
 
       private
 
-      def build_robot
-        Struct.new(:learnings) do
-          def initialize
-            super([])
+      def build_robot(name: 'test_robot')
+        Struct.new(:learnings, :name) do
+          def initialize(name)
+            super([], name)
           end
 
           def learn(text)
             learnings << text unless learnings.include?(text)
             self
           end
-
-          def name
-            'test_robot'
-          end
-        end.new
+        end.new(name)
       end
 
       def learn_ctx(text:, stored:)
@@ -204,29 +121,12 @@ module RobotLab
         ctx
       end
 
-      def around_run_ctx(domain:, store_path: @store_dir)
-        ctx = RobotLab::RunHookContext.new(robot: @robot, request: 'test')
-        ctx.with_namespace(:durable) do
-          ctx.local.domain     = domain
-          ctx.local.store_path = store_path
+      def run_with_fake_adapter(&)
+        fake = @fake_adapter
+        Adapter.stub(:new, fake) do
+          ctx = RobotLab::RunHookContext.new(robot: @robot, request: 'test')
+          Hook.around_run(ctx, &)
         end
-        ctx
-      end
-
-      def seed_entry(content, domain, store)
-        now = Time.now.iso8601
-        store.record(
-          Entry.new(
-            content:    content,
-            reasoning:  'seed',
-            category:   :fact,
-            domain:     domain,
-            confidence: 0.5,
-            use_count:  1,
-            created_at: now,
-            updated_at: now
-          )
-        )
       end
     end
   end

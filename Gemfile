@@ -4,6 +4,7 @@ source 'https://rubygems.org'
 
 gemspec
 
+gem 'htm',       path: '../../htm'
 gem 'robot_lab', path: '../robot_lab'
 
 group :development, :test do

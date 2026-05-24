@@ -8,13 +8,13 @@ Gem::Specification.new do |spec|
   spec.authors  = ['Dewayne VanHoozer']
   spec.email    = ['dvanhoozer@gmail.com']
 
-  spec.summary     = 'Cross-session durable learning for RobotLab agents'
-  spec.description = 'Provides RobotLab::Durable — a YAML-backed knowledge store that lets ' \
-                     'robot_lab agents accumulate and recall observations across sessions. ' \
-                     'Includes Entry (immutable value object with confidence scoring), Store ' \
-                     '(file-locked per-domain persistence), Reflector (end-of-session promoter), ' \
-                     'and the Learning mixin with RecallKnowledge/RecordKnowledge tools that ' \
-                     'integrate directly into Robot when robot_lab is present.'
+  spec.summary     = 'HTM-backed long-term memory for RobotLab agents'
+  spec.description = 'Provides RobotLab::Durable — an adapter between robot_lab and the HTM gem ' \
+                     '(Hierarchical Temporal Memory). Replaces the former YAML store with ' \
+                     'PostgreSQL-backed long-term memory featuring vector embeddings, hybrid ' \
+                     'semantic search, hierarchical tagging, and multi-robot federation. ' \
+                     'Includes RecallKnowledge and RecordKnowledge tools that integrate ' \
+                     'directly into Robot when robot_lab is present.'
   spec.homepage = 'https://github.com/MadBomber/robot_lab-durable'
   spec.license  = 'MIT'
 
@@ -35,8 +35,6 @@ Gem::Specification.new do |spec|
 
   spec.require_paths = ['lib']
 
-  # robot_lab is required at runtime for the Learning mixin, RecallKnowledge,
-  # and RecordKnowledge tools. The pure storage layer (Entry, Store, Reflector)
-  # works standalone when robot_lab is not loaded.
   spec.add_dependency 'robot_lab', '~> 0.2.0'
+  spec.add_dependency 'htm'
 end

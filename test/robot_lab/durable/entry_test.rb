@@ -5,127 +5,54 @@ require 'test_helper'
 module RobotLab
   module Durable
     class EntryTest < Minitest::Test
-      def build_entry(overrides = {})
-        RobotLab::Durable::Entry.new(
-          content: overrides.fetch(:content,    'Skip LangChain content'),
-          reasoning: overrides.fetch(:reasoning,  'User is Ruby-only'),
-          category: overrides.fetch(:category,   :preference),
-          domain: overrides.fetch(:domain,     'newsletter curation'),
-          confidence: overrides.fetch(:confidence, 0.1),
-          use_count: overrides.fetch(:use_count,  0),
-          created_at: overrides.fetch(:created_at, '2026-05-06T12:00:00Z'),
-          updated_at: overrides.fetch(:updated_at, '2026-05-06T12:00:00Z')
-        )
+      def build_node(overrides = {})
+        {
+          'id'         => overrides.fetch(:id, 42),
+          'content'    => overrides.fetch(:content, 'Always use keyword arguments'),
+          'metadata'   => overrides.fetch(:metadata, { 'reasoning' => 'Clearer call sites', 'category' => 'preference' }),
+          'created_at' => overrides.fetch(:created_at, '2026-05-06T12:00:00Z')
+        }
+      end
+
+      def test_from_node_sets_node_id
+        entry = Entry.from_node(build_node(id: 7))
+        assert_equal 7, entry.node_id
+      end
+
+      def test_from_node_sets_content
+        entry = Entry.from_node(build_node(content: 'Use frozen string literals'))
+        assert_equal 'Use frozen string literals', entry.content
+      end
+
+      def test_from_node_sets_reasoning_from_metadata
+        entry = Entry.from_node(build_node(metadata: { 'reasoning' => 'Performance', 'category' => 'fact' }))
+        assert_equal 'Performance', entry.reasoning
+      end
+
+      def test_from_node_sets_category_as_symbol_from_metadata
+        entry = Entry.from_node(build_node(metadata: { 'category' => 'pattern' }))
+        assert_equal :pattern, entry.category
+      end
+
+      def test_from_node_defaults_category_to_fact_when_missing
+        entry = Entry.from_node(build_node(metadata: {}))
+        assert_equal :fact, entry.category
+      end
+
+      def test_from_node_tolerates_nil_metadata
+        entry = Entry.from_node(build_node(metadata: nil))
+        assert_equal :fact, entry.category
+        assert_nil entry.reasoning
+      end
+
+      def test_from_node_sets_created_at
+        entry = Entry.from_node(build_node(created_at: '2026-01-01T00:00:00Z'))
+        assert_equal '2026-01-01T00:00:00Z', entry.created_at
       end
 
       def test_entry_is_immutable
-        entry = build_entry
+        entry = Entry.from_node(build_node)
         assert_raises(NoMethodError) { entry.content = 'changed' }
-      end
-
-      def test_confirm_increments_confidence_by_0_1
-        entry = build_entry(confidence: 0.2, use_count: 1)
-        confirmed = entry.confirm
-        assert_in_delta 0.3, confirmed.confidence, 0.001
-      end
-
-      def test_confirm_increments_use_count
-        entry = build_entry(use_count: 3)
-        assert_equal 4, entry.confirm.use_count
-      end
-
-      def test_confirm_does_not_exceed_max_confidence
-        entry = build_entry(confidence: 0.95)
-        confirmed = entry.confirm
-        assert_in_delta 1.0, confirmed.confidence, 0.001
-        assert_in_delta 1.0, confirmed.confirm.confidence, 0.001
-      end
-
-      def test_confirm_returns_new_entry_leaves_original_unchanged
-        entry = build_entry(confidence: 0.1)
-        entry.confirm
-        assert_in_delta 0.1, entry.confidence, 0.001
-      end
-
-      def test_to_h_returns_string_keys
-        entry = build_entry
-        h = entry.to_h
-        assert_equal 'Skip LangChain content', h['content']
-        assert_equal 'preference',             h['category']
-        assert_in_delta 0.1,                   h['confidence'], 0.001
-      end
-
-      def test_from_h_with_string_keys
-        h = {
-          'content' => 'Skip LangChain content',
-          'reasoning' => 'User is Ruby-only',
-          'category' => 'preference',
-          'domain' => 'newsletter curation',
-          'confidence' => 0.2,
-          'use_count' => 1,
-          'created_at' => '2026-05-06T12:00:00Z',
-          'updated_at' => '2026-05-06T12:00:00Z'
-        }
-        entry = RobotLab::Durable::Entry.from_h(h)
-        assert_equal 'Skip LangChain content', entry.content
-        assert_equal :preference,              entry.category
-        assert_in_delta 0.2,                   entry.confidence, 0.001
-      end
-
-      def test_from_h_roundtrips_through_to_h
-        original     = build_entry(confidence: 0.4, use_count: 2)
-        roundtripped = RobotLab::Durable::Entry.from_h(original.to_h)
-        assert_equal original.content,   roundtripped.content
-        assert_equal original.reasoning, roundtripped.reasoning
-        assert_equal original.category,  roundtripped.category
-        assert_in_delta original.confidence, roundtripped.confidence, 0.001
-        assert_equal original.use_count, roundtripped.use_count
-      end
-
-      def test_from_h_with_symbol_keys
-        h = {
-          content: 'Skip LangChain content',
-          reasoning: 'User is Ruby-only',
-          category: 'preference',
-          domain: 'newsletter curation',
-          confidence: 0.3,
-          use_count: 1,
-          created_at: '2026-05-06T12:00:00Z',
-          updated_at: '2026-05-06T12:00:00Z'
-        }
-        entry = RobotLab::Durable::Entry.from_h(h)
-        assert_equal 'Skip LangChain content', entry.content
-        assert_equal :preference,              entry.category
-      end
-
-      def test_confirm_refreshes_updated_at
-        entry = build_entry(updated_at: '2020-01-01T00:00:00Z')
-        refute_equal '2020-01-01T00:00:00Z', entry.confirm.updated_at
-      end
-
-      def test_from_h_deserializes_use_count_as_integer
-        h = {
-          'content' => 'fact',
-          'reasoning' => 'reason',
-          'category' => 'fact',
-          'domain' => 'test',
-          'confidence' => 0.1,
-          'use_count' => '3',
-          'created_at' => '2026-05-06T12:00:00Z',
-          'updated_at' => '2026-05-06T12:00:00Z'
-        }
-        entry = RobotLab::Durable::Entry.from_h(h)
-        assert_kind_of Integer, entry.use_count
-        assert_equal 3, entry.use_count
-      end
-
-      def test_from_h_with_mixed_key_types
-        h = { 'content' => 'fact', reasoning: 'why', 'category' => 'fact',
-              domain: 'test', 'confidence' => 0.5, use_count: 1,
-              'created_at' => '2026-05-06T12:00:00Z', 'updated_at' => '2026-05-06T12:00:00Z' }
-        entry = RobotLab::Durable::Entry.from_h(h)
-        assert_equal 'fact', entry.content
-        assert_equal 'why',  entry.reasoning
       end
 
       def test_version_is_defined

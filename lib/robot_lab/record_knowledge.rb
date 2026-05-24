@@ -11,30 +11,16 @@ module RobotLab
     param :reasoning, type: 'string',
                       desc: 'Why this is worth remembering — the observation or discussion that led to it'
     param :category,  type: 'string', desc: 'One of: fact, preference, pattern, correction'
-    param :domain,    type: 'string', desc: "Topic area this applies to (e.g. 'newsletter curation', 'ruby tooling')"
 
-    def execute(content:, reasoning:, category:, domain:)
-      session = RobotLab::Durable::Hook.current_session
-      return 'No durable session active on this robot.' unless session
+    def execute(content:, reasoning:, category:)
+      adapter = RobotLab::Durable::Hook.current_adapter
+      return 'No durable session active on this robot.' unless adapter
 
-      now   = Time.now.iso8601
-      entry = Durable::Entry.new(
-        content:,
-        reasoning:,
-        category:   category.to_sym,
-        domain:,
-        confidence: 0.1,
-        use_count:  0,
-        created_at: now,
-        updated_at: now
-      )
-
-      # Write to the store with full metadata. Suppressing on_learn during
-      # robot.learn() prevents a second generic write from the hook.
-      RobotLab::Durable::Hook.skip_persist { session[:store].record(entry) }
+      adapter.record(content: content, reasoning: reasoning, category: category)
 
       # Update session memory so subsequent LLM calls in this run see the fact.
-      robot.learn("#{content} (#{domain})")
+      # HTM deduplicates by content hash, so the on_learn callback that follows is safe.
+      robot.learn(content)
 
       "Recorded: #{content}"
     end

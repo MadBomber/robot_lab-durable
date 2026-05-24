@@ -1,21 +1,23 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Example 33: XYZZY Stock Price Generator
+# Day Trader: XYZZY Stock Price Generator
 #
 # Publishes fake streaming prices for ticker XYZZY to a Redis channel
 # using Geometric Brownian Motion with occasional volatility regime shifts.
 #
+# Launched by examples/01_day_trader.rb.
+# Can also be run standalone.
+#
 # Prerequisites:
 #   gem install redis
 #   Redis server running on localhost:6379
-#
-# Usage:
-#   ruby examples/33_stock_generator.rb
 
 require "redis"
 require "json"
 require "time"
+
+$stdout.sync = true   # flush every line immediately through the pipe
 
 CHANNEL     = "stock:xyzzy"
 START_PRICE = 100.0

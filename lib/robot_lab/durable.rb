@@ -2,16 +2,14 @@
 
 require_relative 'durable/version'
 require_relative 'durable/entry'
-require_relative 'durable/store'
-require_relative 'durable/reflector'
+require_relative 'durable/adapter'
 
-# Minimal error stub so the storage layer works without robot_lab loaded.
+# Minimal error stub so the adapter layer works without robot_lab loaded.
 # When robot_lab is present its own RobotLab::Error takes precedence.
 module RobotLab
   Error = StandardError unless defined?(Error)
 end
 
-# When robot_lab is loaded, wire up the hook-based integration.
 if defined?(RobotLab::Hook)
   require_relative 'durable/hook'
 end
