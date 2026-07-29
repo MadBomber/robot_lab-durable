@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1209,7 +1209,7 @@ This gem is under active development. APIs may change without notice.</p>
 <tr>
 <td><code>record</code></td>
 <td><code>content:</code> (String, required), <code>reasoning:</code> (String, optional), <code>category:</code> (String/Symbol, default <code>'fact'</code>)</td>
-<td>nil</td>
+<td>Integer (HTM node_id)</td>
 <td>Calls <code>htm.remember(content, metadata: { reasoning:, category: })</code>. HTM deduplicates by SHA-256 content hash — safe to call with the same content multiple times.</td>
 </tr>
 <tr>
@@ -1237,7 +1237,7 @@ This gem is under active development. APIs may change without notice.</p>
 <p>Use <code>adapter.htm</code> when you need HTM operations not exposed through <code>Adapter</code>, such as bulk deletion or direct node inspection.</p>
 <hr />
 <h2 id="entry-fields">Entry Fields<a class="headerlink" href="#entry-fields" title="Permanent link">&para;</a></h2>
-<p><code>Durable::Entry</code> is constructed via <code>Entry.from_node(node)</code> from a raw HTM node hash.</p>
+<p><code>Durable::Entry</code> is constructed via <code>Entry.from_node(node)</code> from a raw HTM node hash. HTM nodes use string keys (not symbols), so <code>from_node</code> reads <code>node['id']</code>, not <code>node[:id]</code>.</p>
 <table>
 <thead>
 <tr>
@@ -1250,33 +1250,33 @@ This gem is under active development. APIs may change without notice.</p>
 <tbody>
 <tr>
 <td><code>node_id</code></td>
-<td>String</td>
+<td>Integer</td>
 <td>Unique identifier for the stored node</td>
-<td><code>node[:id]</code></td>
+<td><code>node['id']</code></td>
 </tr>
 <tr>
 <td><code>content</code></td>
 <td>String</td>
 <td>The stored knowledge text</td>
-<td><code>node[:content]</code></td>
+<td><code>node['content']</code></td>
 </tr>
 <tr>
 <td><code>reasoning</code></td>
 <td>String / nil</td>
 <td>Optional rationale recorded at write time</td>
-<td><code>node[:metadata][:reasoning]</code></td>
+<td><code>node['metadata']['reasoning']</code></td>
 </tr>
 <tr>
 <td><code>category</code></td>
 <td>Symbol</td>
 <td>Category of knowledge (e.g. <code>:fact</code>, <code>:observation</code>)</td>
-<td><code>node[:metadata][:category].to_sym</code></td>
+<td><code>(node['metadata']['category'] || 'fact').to_sym</code></td>
 </tr>
 <tr>
 <td><code>created_at</code></td>
-<td>Time</td>
-<td>When the entry was first stored</td>
-<td><code>node[:created_at]</code></td>
+<td>String</td>
+<td>Raw timestamp as returned by HTM (e.g. <code>'2026-05-06T12:00:00Z'</code>) — not parsed into a <code>Time</code> object</td>
+<td><code>node['created_at']</code></td>
 </tr>
 </tbody>
 </table>
@@ -1292,8 +1292,13 @@ This gem is under active development. APIs may change without notice.</p>
 <li>In <code>ensure</code>, clears the thread-local adapter so state never leaks to subsequent runs on the same thread.</li>
 </ol>
 <h3 id="on_learn">on_learn<a class="headerlink" href="#on_learn" title="Permanent link">&para;</a></h3>
-<p>Fires after each call to <code>robot.learn(text)</code>. When a durable session is active (<code>Hook.current_adapter</code> is non-nil), calls:</p>
-<div class="language-ruby highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">adapter</span><span class="o">.</span><span class="n">record</span><span class="p">(</span><span class="ss">content</span><span class="p">:</span><span class="w"> </span><span class="n">text</span><span class="p">,</span><span class="w"> </span><span class="ss">category</span><span class="p">:</span><span class="w"> </span><span class="ss">:observation</span><span class="p">)</span>
+<p>Fires after each call to <code>robot.learn(text)</code>, but only persists when both of these hold:</p>
+<ol>
+<li><code>ctx.stored</code> is true — <code>robot.learn</code> sets this only when the text was actually added to the robot's in-memory <code>@learnings</code> list. If <code>text</code> is a substring of an existing learning (or vice versa, see <code>robot.learn</code>'s dedup rule in <code>robot_lab</code> core), <code>ctx.stored</code> stays <code>false</code> and <code>on_learn</code> returns early without recording.</li>
+<li>A durable session is active (<code>Hook.current_adapter</code> is non-nil).</li>
+</ol>
+<p>When both hold, calls:</p>
+<div class="language-ruby highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">adapter</span><span class="o">.</span><span class="n">record</span><span class="p">(</span><span class="ss">content</span><span class="p">:</span><span class="w"> </span><span class="n">ctx</span><span class="o">.</span><span class="n">text</span><span class="p">,</span><span class="w"> </span><span class="ss">category</span><span class="p">:</span><span class="w"> </span><span class="ss">:observation</span><span class="p">)</span>
 </span></code></pre></div>
 <p>This persists the learning immediately. HTM's content-hash deduplication ensures that re-seeding the same fact across sessions does not create duplicate entries.</p>
 <h3 id="enabling-the-hook">Enabling the hook<a class="headerlink" href="#enabling-the-hook" title="Permanent link">&para;</a></h3>
@@ -1318,25 +1323,14 @@ This gem is under active development. APIs may change without notice.</p>
 <td><code>query</code></td>
 <td>String</td>
 <td>yes</td>
-<td>The search phrase or question to match against stored knowledge</td>
-</tr>
-<tr>
-<td><code>limit</code></td>
-<td>Integer</td>
-<td>no</td>
-<td>Maximum number of entries to return (default 20)</td>
-</tr>
-<tr>
-<td><code>strategy</code></td>
-<td>String</td>
-<td>no</td>
-<td>Recall strategy: <code>"hybrid"</code>, <code>"vector"</code>, or <code>"fulltext"</code> (default <code>"hybrid"</code>)</td>
+<td>Natural-language description of the decision you are about to make</td>
 </tr>
 </tbody>
 </table>
-<p>Returns formatted text entries from the store, one per result, with content and category. Returns an empty acknowledgement when no results match.</p>
+<p><code>limit</code> and <code>strategy</code> are not exposed as tool parameters — the tool always calls <code>adapter.recall</code> with its defaults (<code>limit: 20</code>, <code>strategy: :hybrid</code>). Use <code>Hook.current_adapter</code> directly (see <a href="#adapter-api">Adapter API</a>) if you need to control those.</p>
+<p>Returns formatted text entries (<code>"[category] content — reasoning"</code>, one per line, prefixed with <code>"Relevant past knowledge:"</code>) when matches are found. Returns <code>"No relevant past knowledge found for: &lt;query&gt;. When in doubt, skip."</code> when the recall is empty, or <code>"No durable session active on this robot."</code> when no <code>Hook.current_adapter</code> is active (e.g. the hook wasn't registered with <code>robot.on</code>).</p>
 <p>Implementation calls:</p>
-<div class="language-ruby highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="no">Hook</span><span class="o">.</span><span class="n">current_adapter</span><span class="o">.</span><span class="n">recall</span><span class="p">(</span><span class="ss">query</span><span class="p">:</span><span class="w"> </span><span class="n">query</span><span class="p">,</span><span class="w"> </span><span class="ss">limit</span><span class="p">:</span><span class="w"> </span><span class="n">limit</span><span class="p">,</span><span class="w"> </span><span class="ss">strategy</span><span class="p">:</span><span class="w"> </span><span class="n">strategy</span><span class="o">.</span><span class="n">to_sym</span><span class="p">)</span>
+<div class="language-ruby highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="no">Hook</span><span class="o">.</span><span class="n">current_adapter</span><span class="o">.</span><span class="n">recall</span><span class="p">(</span><span class="ss">query</span><span class="p">:</span><span class="w"> </span><span class="n">query</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="recordknowledge">RecordKnowledge<a class="headerlink" href="#recordknowledge" title="Permanent link">&para;</a></h3>
 <p>Allows the LLM to persist new knowledge during a session.</p>
@@ -1359,17 +1353,19 @@ This gem is under active development. APIs may change without notice.</p>
 <tr>
 <td><code>reasoning</code></td>
 <td>String</td>
-<td>no</td>
+<td>yes</td>
 <td>Rationale or context for why this is being stored</td>
 </tr>
 <tr>
 <td><code>category</code></td>
 <td>String</td>
-<td>no</td>
-<td>Category label (default <code>"fact"</code>)</td>
+<td>yes</td>
+<td>One of: fact, preference, pattern, correction</td>
 </tr>
 </tbody>
 </table>
+<p>All three are required — neither <code>param</code> (which defaults to <code>required: true</code>) nor the tool's <code>execute(content:, reasoning:, category:)</code> signature declares a default. (The <code>'fact'</code> default described in the <a href="#adapter-api">Adapter API</a> applies only when calling <code>Adapter#record</code> directly, not through this tool.)</p>
+<p>Returns <code>"Recorded: &lt;content&gt;"</code> on success, or <code>"No durable session active on this robot."</code> when no <code>Hook.current_adapter</code> is active.</p>
 <p>Implementation calls:</p>
 <div class="language-ruby highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">adapter</span><span class="o">.</span><span class="n">record</span><span class="p">(</span><span class="ss">content</span><span class="p">:</span><span class="w"> </span><span class="n">content</span><span class="p">,</span><span class="w"> </span><span class="ss">reasoning</span><span class="p">:</span><span class="w"> </span><span class="n">reasoning</span><span class="p">,</span><span class="w"> </span><span class="ss">category</span><span class="p">:</span><span class="w"> </span><span class="n">category</span><span class="p">)</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">robot</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
@@ -1576,7 +1572,7 @@ This gem is under active development. APIs may change without notice.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.path", "navigation.indexes", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "header.autohide", "content.code.copy", "content.code.annotate", "content.tabs.link", "content.tooltips", "content.action.edit", "content.action.view"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
