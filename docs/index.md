@@ -53,7 +53,7 @@ No `domain:` argument is required. HTM scopes all storage to the robot's `name` 
 
 | Method | Arguments | Returns | Notes |
 |--------|-----------|---------|-------|
-| `record` | `content:` (String, required), `reasoning:` (String, optional), `category:` (String/Symbol, default `'fact'`) | nil | Calls `htm.remember(content, metadata: { reasoning:, category: })`. HTM deduplicates by SHA-256 content hash — safe to call with the same content multiple times. |
+| `record` | `content:` (String, required), `reasoning:` (String, optional), `category:` (String/Symbol, default `'fact'`) | Integer (HTM node_id) | Calls `htm.remember(content, metadata: { reasoning:, category: })`. HTM deduplicates by SHA-256 content hash — safe to call with the same content multiple times. |
 | `recall` | `query:` (String, required), `limit:` (Integer, default 20), `strategy:` (Symbol, default `:hybrid`) | `Array<Entry>` | Calls `htm.recall(query, limit:, strategy:, raw: true)` then wraps each result in `Entry.from_node`. |
 | `htm` | — | `HTM` instance | Direct access to the underlying HTM object for advanced operations. |
 
@@ -78,15 +78,15 @@ Use `adapter.htm` when you need HTM operations not exposed through `Adapter`, su
 
 ## Entry Fields
 
-`Durable::Entry` is constructed via `Entry.from_node(node)` from a raw HTM node hash.
+`Durable::Entry` is constructed via `Entry.from_node(node)` from a raw HTM node hash. HTM nodes use string keys (not symbols), so `from_node` reads `node['id']`, not `node[:id]`.
 
 | Field | Type | Description | Source in HTM node |
 |-------|------|-------------|--------------------|
-| `node_id` | String | Unique identifier for the stored node | `node[:id]` |
-| `content` | String | The stored knowledge text | `node[:content]` |
-| `reasoning` | String / nil | Optional rationale recorded at write time | `node[:metadata][:reasoning]` |
-| `category` | Symbol | Category of knowledge (e.g. `:fact`, `:observation`) | `node[:metadata][:category].to_sym` |
-| `created_at` | Time | When the entry was first stored | `node[:created_at]` |
+| `node_id` | Integer | Unique identifier for the stored node | `node['id']` |
+| `content` | String | The stored knowledge text | `node['content']` |
+| `reasoning` | String / nil | Optional rationale recorded at write time | `node['metadata']['reasoning']` |
+| `category` | Symbol | Category of knowledge (e.g. `:fact`, `:observation`) | `(node['metadata']['category'] || 'fact').to_sym` |
+| `created_at` | String | Raw timestamp as returned by HTM (e.g. `'2026-05-06T12:00:00Z'`) — not parsed into a `Time` object | `node['created_at']` |
 
 ---
 
@@ -104,10 +104,15 @@ The `Durable::Hook` handler implements two lifecycle callbacks.
 
 ### on_learn
 
-Fires after each call to `robot.learn(text)`. When a durable session is active (`Hook.current_adapter` is non-nil), calls:
+Fires after each call to `robot.learn(text)`, but only persists when both of these hold:
+
+1. `ctx.stored` is true — `robot.learn` sets this only when the text was actually added to the robot's in-memory `@learnings` list. If `text` is a substring of an existing learning (or vice versa, see `robot.learn`'s dedup rule in `robot_lab` core), `ctx.stored` stays `false` and `on_learn` returns early without recording.
+2. A durable session is active (`Hook.current_adapter` is non-nil).
+
+When both hold, calls:
 
 ```ruby
-adapter.record(content: text, category: :observation)
+adapter.record(content: ctx.text, category: :observation)
 ```
 
 This persists the learning immediately. HTM's content-hash deduplication ensures that re-seeding the same fact across sessions does not create duplicate entries.
@@ -130,16 +135,16 @@ Allows the LLM to query the robot's durable memory store.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `query` | String | yes | The search phrase or question to match against stored knowledge |
-| `limit` | Integer | no | Maximum number of entries to return (default 20) |
-| `strategy` | String | no | Recall strategy: `"hybrid"`, `"vector"`, or `"fulltext"` (default `"hybrid"`) |
+| `query` | String | yes | Natural-language description of the decision you are about to make |
 
-Returns formatted text entries from the store, one per result, with content and category. Returns an empty acknowledgement when no results match.
+`limit` and `strategy` are not exposed as tool parameters — the tool always calls `adapter.recall` with its defaults (`limit: 20`, `strategy: :hybrid`). Use `Hook.current_adapter` directly (see [Adapter API](#adapter-api)) if you need to control those.
+
+Returns formatted text entries (`"[category] content — reasoning"`, one per line, prefixed with `"Relevant past knowledge:"`) when matches are found. Returns `"No relevant past knowledge found for: <query>. When in doubt, skip."` when the recall is empty, or `"No durable session active on this robot."` when no `Hook.current_adapter` is active (e.g. the hook wasn't registered with `robot.on`).
 
 Implementation calls:
 
 ```ruby
-Hook.current_adapter.recall(query: query, limit: limit, strategy: strategy.to_sym)
+Hook.current_adapter.recall(query: query)
 ```
 
 ### RecordKnowledge
@@ -149,8 +154,12 @@ Allows the LLM to persist new knowledge during a session.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `content` | String | yes | The knowledge text to store |
-| `reasoning` | String | no | Rationale or context for why this is being stored |
-| `category` | String | no | Category label (default `"fact"`) |
+| `reasoning` | String | yes | Rationale or context for why this is being stored |
+| `category` | String | yes | One of: fact, preference, pattern, correction |
+
+All three are required — neither `param` (which defaults to `required: true`) nor the tool's `execute(content:, reasoning:, category:)` signature declares a default. (The `'fact'` default described in the [Adapter API](#adapter-api) applies only when calling `Adapter#record` directly, not through this tool.)
+
+Returns `"Recorded: <content>"` on success, or `"No durable session active on this robot."` when no `Hook.current_adapter` is active.
 
 Implementation calls:
 
