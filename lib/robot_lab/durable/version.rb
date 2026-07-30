@@ -2,6 +2,6 @@
 
 module RobotLab
   module Durable
-    VERSION = '0.2.1'
+    VERSION = '0.2.5'
   end
 end

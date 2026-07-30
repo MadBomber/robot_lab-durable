@@ -7,22 +7,18 @@ module RobotLab
                 'to check if you have seen a similar situation before. ' \
                 'When in doubt and no relevant knowledge is found, skip the action.'
 
-    param :query,  type: 'string', desc: 'Natural language description of the decision you are about to make'
-    param :domain, type: 'string', desc: "Topic area to search (e.g. 'newsletter curation')", required: false
+    param :query, type: 'string', desc: 'Natural language description of the decision you are about to make'
 
-    def execute(query:, domain: nil)
-      store = robot&.durable_store
-      return 'No durable store configured on this robot.' unless store
+    def execute(query:)
+      adapter = RobotLab::Durable::Hook.current_adapter
+      return 'No durable session active on this robot.' unless adapter
 
-      entries = store.recall(query: query, domain: domain, min_confidence: 0.0)
+      entries = adapter.recall(query: query)
 
       if entries.empty?
         "No relevant past knowledge found for: #{query}. When in doubt, skip."
       else
-        lines = entries.map do |e|
-          "[#{e.category}/conf:#{format('%.1f', e.confidence)}] #{e.content} — #{e.reasoning}"
-        end
-
+        lines = entries.map { |e| "[#{e.category}] #{e.content} — #{e.reasoning}" }
         "Relevant past knowledge:\n#{lines.join("\n")}"
       end
     end

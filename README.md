@@ -1,18 +1,23 @@
 # robot_lab-durable
 
-Cross-session durable learning for the [RobotLab](https://github.com/MadBomber/robot_lab) LLM agent framework.
+Cross-session durable memory for the [RobotLab](https://github.com/MadBomber/robot_lab) LLM agent framework, backed by the [htm gem](https://madbomber.github.io/htm) (PostgreSQL + pgvector).
 
 > [!CAUTION]
 > This gem is under active development. APIs may change without notice.
 
 ## What it provides
 
-- **`Durable::Entry`** — immutable, confidence-tracked knowledge record
-- **`Durable::Store`** — YAML-backed, file-locked per-domain knowledge persistence in `~/.robot_lab/durable/`
-- **`Durable::Reflector`** — promotes session-level learnings into the durable store at end-of-run
-- **`Durable::Learning`** — mixin included into `RobotLab::Robot`; enabled via `learn: true, learn_domain:` constructor params
-- **`RecallKnowledge`** tool — lets robots query the durable store before making decisions
-- **`RecordKnowledge`** tool — lets robots write new knowledge during a session
+- **`Durable::Adapter`** — thin wrapper around an `HTM` instance; scoped to a robot by name. Exposes `record` and `recall` methods.
+- **`Durable::Entry`** — presenter over raw HTM node hashes returned by recall. Provides typed fields: `node_id`, `content`, `reasoning`, `category`, `created_at`.
+- **`Durable::Hook`** — RobotLab hook handler that wires the `Adapter` lifecycle into `around_run` and `on_learn` automatically.
+- **`RecallKnowledge`** tool — lets a robot query its durable memory before answering.
+- **`RecordKnowledge`** tool — lets a robot persist new knowledge during a session.
+
+## Prerequisites
+
+- PostgreSQL with the pgvector extension enabled.
+- The `htm` gem — see documentation at https://madbomber.github.io/htm.
+- The `robot_lab` gem.
 
 ## Installation
 
@@ -23,6 +28,12 @@ gem "robot_lab"
 gem "robot_lab-durable"
 ```
 
+Then run:
+
+```
+bundle install
+```
+
 ## Quick Example
 
 ```ruby
@@ -30,53 +41,77 @@ require "robot_lab"
 require "robot_lab/durable"
 
 robot = RobotLab.build(
-  name: "advisor",
-  system_prompt: "You are a financial advisor that learns from each session.",
-  learn: true,
-  learn_domain: "finance"
+  name:          "advisor",
+  system_prompt: "You are a financial advisor.",
+  local_tools:   [RobotLab::RecallKnowledge, RobotLab::RecordKnowledge]
 )
+robot.on(RobotLab::Durable::Hook)
 
-# RecallKnowledge and RecordKnowledge tools are automatically available.
-# At the end of each run, the Reflector promotes learned facts to
-# ~/.robot_lab/durable/finance.yml for use in future sessions.
 result = robot.run("What do you know about my risk tolerance?")
 puts result.last_text_content
 ```
 
+No `domain:` argument is required. HTM scopes all storage to the robot's `name` automatically.
+
 ## How It Works
 
-When `learn: true` and `learn_domain:` are set, the robot gains two built-in tools:
+### Hook lifecycle
 
-- **`RecallKnowledge`** — queries the domain's YAML store for relevant past knowledge before responding
-- **`RecordKnowledge`** — writes new knowledge entries during a session
+`RobotLab::Durable::Hook` is registered via `robot.on(...)` and plugs into two lifecycle events:
 
-At the end of each run, `Durable::Reflector` promotes session-level learnings into the persistent store with confidence scoring and deduplication.
+- **`around_run`** — creates a thread-local `Adapter` instance keyed to `ctx.robot.name`, makes it available to tools for the duration of the run, and clears it in `ensure` so state never leaks across run boundaries.
+- **`on_learn`** — fires after each new session learning is stored in memory. When a durable session is active, persists the text via `adapter.record(content:, category: :observation)`.
 
-## Knowledge Persistence
+### Adapter
+
+`Durable::Adapter` wraps an `HTM` instance and provides two methods:
+
+| Method | Description |
+|--------|-------------|
+| `record(content:, reasoning: nil, category: 'fact')` | Stores a memory entry. HTM deduplicates by SHA-256 content hash, so calling `record` with identical content is safe. |
+| `recall(query:, limit: 20, strategy: :hybrid)` | Searches stored memory and returns an array of `Entry` objects. |
+| `htm` | Direct access to the underlying `HTM` instance for advanced use. |
+
+### Entry
+
+`Durable::Entry` is a presenter built via `Entry.from_node(node)` over the raw hashes returned by `HTM#recall`. It exposes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `node_id` | String | Unique HTM node identifier |
+| `content` | String | The stored knowledge text |
+| `reasoning` | String / nil | Optional rationale recorded at write time |
+| `category` | Symbol | `:fact`, `:observation`, or any custom value |
+| `created_at` | Time | When the entry was first stored |
+
+## Tools
+
+### RecallKnowledge
+
+Calls `Hook.current_adapter.recall(query:)` with the query text provided by the LLM and returns formatted entries. Uses the `:hybrid` strategy by default.
+
+### RecordKnowledge
+
+Calls `adapter.record(content:, reasoning:, category:)` to persist a new memory, then calls `robot.learn(content)` to update session context. Because HTM deduplicates by content hash, no explicit double-write prevention is necessary.
+
+## Day Trader Demo
+
+`examples/01_day_trader.rb` demonstrates cross-session durable memory in action. It spawns a GBM stock price generator and an SMA+EMA ensemble predictor as subprocesses. Output is colour-coded `[GEN ]` / `[PRED]` per process, with a GOOD/MISS verdict printed for each prediction window. The durable agent tunes its prediction parameters across sessions, accumulating knowledge about what works.
 
 ```
-~/.robot_lab/durable/
-  finance.yml       # per-domain YAML store
-  support.yml
-  ...
+ruby examples/01_day_trader.rb
 ```
-
-Each entry records: `content`, `confidence`, `category`, `domain`, `use_count`, `created_at`, and `updated_at`.
-
-Knowledge confidence grows as the same fact is recalled and confirmed across sessions. Low-confidence entries are pruned automatically over time.
-
-## Relationship to `robot.learn()`
-
-`robot.learn()` is a core RobotLab method that accumulates observations within a single session in memory. `robot_lab-durable` extends this by persisting those observations to disk across sessions, making the robot's learning accumulate over its lifetime rather than resetting each run.
 
 ## Links
 
 - [RobotLab Core](https://github.com/MadBomber/robot_lab)
+- [HTM gem docs](https://madbomber.github.io/htm)
 - [RubyGems](https://rubygems.org/gems/robot_lab-durable)
+- [GitHub](https://github.com/MadBomber/robot_lab-durable)
 
 ## License
 
-MIT License - Copyright (c) 2025 Dewayne VanHoozer
+MIT License — Copyright (c) 2025 Dewayne VanHoozer
 
 ## Contributing
 

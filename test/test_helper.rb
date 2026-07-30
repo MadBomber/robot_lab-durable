@@ -1,22 +1,38 @@
 # frozen_string_literal: true
 
-$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
+require 'simplecov'
+SimpleCov.start do
+  add_filter '/test/'
+  add_filter '/vendor/'
 
-# Load the pure storage layer without robot_lab to avoid conflicts while
-# robot_lab still ships its own copy of the durable files. Once robot_lab
-# drops those files and adds robot_lab-durable as a dependency, switch to:
-#   require "robot_lab/durable"
-module RobotLab
-  Error = StandardError unless defined?(Error)
+  add_group 'Durable', 'lib/robot_lab/durable'
+
+  enable_coverage :branch
 end
 
-require 'robot_lab/durable/version'
-require 'robot_lab/durable/entry'
-require 'robot_lab/durable/store'
-require 'robot_lab/durable/reflector'
+$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 
-require 'fileutils'
-require 'tmpdir'
+require 'robot_lab'
+require 'robot_lab/durable'
 
 require 'minitest/autorun'
-require 'minitest/pride'
+require 'minitest/reporters'
+
+# rubocop:disable Style/FileOpen, Style/GlobalStdStream, Layout/LineLength
+$stdout = File.open('test_output.txt', 'w').tap { |f| f.sync = true }
+
+class TerminalSummaryReporter < Minitest::Reporters::BaseReporter
+  def report
+    super
+    ok    = failures.zero? && errors.zero?
+    badge = ok ? "\e[32mPASS\e[0m" : "\e[31mFAIL\e[0m"
+    STDOUT.puts "[#{badge}] #{count} tests, #{failures} failures, #{errors} errors, #{skips} skips (#{format('%.2f', total_time)}s) — see test_output.txt"
+    STDOUT.flush
+  end
+end
+# rubocop:enable Style/FileOpen, Style/GlobalStdStream, Layout/LineLength
+
+Minitest::Reporters.use! [
+  Minitest::Reporters::DefaultReporter.new(color: false, slow_count: 5),
+  TerminalSummaryReporter.new
+]

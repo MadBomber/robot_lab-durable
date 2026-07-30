@@ -1,0 +1,10 @@
+# frozen_string_literal: true
+# robot_lab-durable — cross-session persistent robot memory and learned behaviors.
+
+import_up "repo_dev.loki"
+
+class Tasks
+  @@gem_name ||= "robot_lab-durable".freeze
+
+  header "robot_lab-durable v#{gem_version} — cross-session persistent learning"
+end

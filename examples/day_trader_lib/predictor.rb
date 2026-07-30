@@ -1,30 +1,40 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Example 33: XYZZY Stock Price Predictor
+# Day Trader: XYZZY Stock Price Predictor
 #
-# Consumes fake streaming prices for ticker XYZZY from a Redis channel,
-# predicts the high and low over the next price window using an SMA + EMA
-# ensemble, and uses a RobotLab learning robot to tune predictor parameters
-# after each window closes.
+# Subscribes to the XYZZY Redis channel, accumulates ticks into windows,
+# predicts each window's high/low using an SMA+EMA ensemble, and uses a
+# RobotLab durable agent to tune parameters across sessions.
 #
-# Run alongside:
-#   ruby examples/33_stock_generator.rb   (in a separate terminal)
+# After each window closes the predictor prints a GOOD/MISS verdict:
+#   ✓ GOOD  mean prediction error ≤ GOOD_THRESHOLD
+#   ✗ MISS  mean prediction error >  GOOD_THRESHOLD
+#
+# Launched by examples/01_day_trader.rb.
+# Can also be run standalone alongside generator.rb.
 #
 # Prerequisites:
 #   gem install redis
 #   Redis server running on localhost:6379
-#
-# Usage:
-#   ruby examples/33_stock_predictor.rb
+#   PostgreSQL configured for HTM (see HTM gem setup)
+
+$stdout.sync = true   # flush every line immediately through the pipe
+
+$LOAD_PATH.unshift File.expand_path('../../../robot_lab/lib', __dir__)
+$LOAD_PATH.unshift File.expand_path('../../lib', __dir__)
 
 require "robot_lab"
 require "robot_lab/durable"
 require "redis"
 require "json"
 
-CHANNEL     = "stock:xyzzy"
-WINDOW_SIZE = 12  # ticks per prediction window
+DEBUG_MODE = ARGV.delete("--debug")
+RubyLLM.configure { |c| c.log_level = DEBUG_MODE ? Logger::DEBUG : Logger::WARN }
+
+CHANNEL        = "stock:xyzzy"
+WINDOW_SIZE    = 12    # ticks per prediction window
+GOOD_THRESHOLD = 2.00  # mean error (dollars) at or below which a window is GOOD
 
 # ── Mutable predictor parameters ──────────────────────────────────────────────
 
@@ -139,14 +149,12 @@ class AdjustParameters < RobotLab::Tool
 
     clamped = value.to_f.clamp(spec[:min], spec[:max])
     clamped = clamped.round if spec[:integer]
-
     PredictorConfig.send(:"#{parameter}=", clamped)
-
     "Set #{parameter} = #{clamped}. #{reasoning}"
   end
 end
 
-# ── Error metrics ──────────────────────────────────────────────────────────────
+# ── Window evaluation ──────────────────────────────────────────────────────────
 
 WindowResult = Data.define(
   :window_num,
@@ -168,6 +176,17 @@ def evaluate_window(window_num, predicted, actuals)
     actual_high:,   actual_low:,
     high_err:,      low_err:,         mean_err:
   )
+end
+
+def print_window_result(result)
+  verdict = result.mean_err <= GOOD_THRESHOLD ? "✓ GOOD" : "✗ MISS"
+  puts "─" * 58
+  puts "Window #{result.window_num}  #{verdict}  " \
+       "mean_err=$#{"%.2f" % result.mean_err}  (threshold $#{"%.2f" % GOOD_THRESHOLD})"
+  puts "  Predicted  h=$%-8.2f  l=$%.2f" % [result.predicted_high, result.predicted_low]
+  puts "  Actual     h=$%-8.2f  l=$%.2f  err h=$%.2f l=$%.2f" % [
+    result.actual_high, result.actual_low, result.high_err, result.low_err
+  ]
 end
 
 def tuner_prompt(result)
@@ -193,49 +212,52 @@ end
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-puts "=" * 60
+puts "=" * 58
 puts "XYZZY Stock Predictor"
-puts "=" * 60
+puts "=" * 58
 puts "Channel    : #{CHANNEL}"
 puts "Window     : #{WINDOW_SIZE} ticks"
 puts "Model      : SMA + EMA Ensemble with Durable Learning"
 puts "Warmup     : #{PredictorConfig.sma_window} ticks"
-puts "Press Ctrl-C to stop."
-puts "-" * 60
+puts "Good threshold: $#{"%.2f" % GOOD_THRESHOLD} mean error"
+puts "-" * 58
 
-redis      = Redis.new
-prices     = []
-robot      = RobotLab.build(
-               name:          "predictor_tuner",
-               system_prompt: <<~PROMPT,
-                 You are a quantitative analyst tuning an ensemble stock price range
-                 predictor for ticker XYZZY. Each prediction covers the high and low
-                 price over the next #{WINDOW_SIZE} ticks.
+redis = Redis.new
+prices = []
+robot  = RobotLab.build(
+           name:          "predictor_tuner",
+           model:         "gpt-4.1-mini",
+           provider:      :openai,
+           system_prompt: <<~PROMPT,
+             You are a quantitative analyst tuning an ensemble stock price range
+             predictor for ticker XYZZY. Each prediction covers the high and low
+             price over the next #{WINDOW_SIZE} ticks.
 
-                 The ensemble combines a Simple Moving Average (SMA) band and an
-                 Exponential Moving Average (EMA) band. Adjustable parameters:
+             The ensemble combines a Simple Moving Average (SMA) band and an
+             Exponential Moving Average (EMA) band. Adjustable parameters:
 
-                   sma_window (3-30 int)         — lookback period for SMA
-                   sma_std_multiplier (0.5-4.0)  — band width relative to SMA stddev
-                   ema_alpha (0.05-0.5)           — EMA smoothing (higher = more reactive)
-                   ema_vol_multiplier (0.5-4.0)   — band width relative to EMA volatility
-                   sma_weight (0.0-1.0)           — SMA share in ensemble (EMA = 1 - weight)
+               sma_window (3-30 int)         — lookback period for SMA
+               sma_std_multiplier (0.5-4.0)  — band width relative to SMA stddev
+               ema_alpha (0.05-0.5)           — EMA smoothing (higher = more reactive)
+               ema_vol_multiplier (0.5-4.0)   — band width relative to EMA volatility
+               sma_weight (0.0-1.0)           — SMA share in ensemble (EMA = 1 - weight)
 
-                 Workflow per window:
-                   1. Call RecallKnowledge to check past findings before acting.
-                   2. If the error is clearly too high/low in one direction, adjust the
-                      relevant band multiplier via AdjustParameters.
-                   3. Make at most two adjustments per window to isolate cause and effect.
-                   4. If you observe a reliable pattern, call RecordKnowledge to preserve it.
-                   5. When uncertain, do nothing rather than guess.
-               PROMPT
-               local_tools:   [AdjustParameters],
-               learn:         true,
-               learn_domain:  "xyzzy stock prediction"
-             )
+             Workflow per window:
+               1. Call RecallKnowledge to check past findings before acting.
+               2. If the error is clearly too high/low in one direction, adjust the
+                  relevant band multiplier via AdjustParameters.
+               3. Make at most two adjustments per window to isolate cause and effect.
+               4. If you observe a reliable pattern, call RecordKnowledge to preserve it.
+               5. When uncertain, do nothing rather than guess.
+           PROMPT
+           local_tools: [AdjustParameters,
+                         RobotLab::RecallKnowledge,
+                         RobotLab::RecordKnowledge]
+         )
+robot.on(RobotLab::Durable::Hook)
 
 warmed_up    = false
-pending_pred = nil  # { prediction: {high:, low:}, window_prices: [] }
+pending_pred = nil
 window_num   = 0
 
 trap("INT") { puts "\nPredictor stopped."; exit }
@@ -251,7 +273,7 @@ redis.subscribe(CHANNEL) do |on|
     EMAPredictor.update(price)
     prices << price
 
-    # ── Warmup phase ──────────────────────────────────────────────
+    # ── Warmup phase ────────────────────────────────────────────────────────
     unless warmed_up
       if prices.size < PredictorConfig.sma_window
         puts "Tick %5d  $%8.2f  [warming up %d/%d]" % [tick, price, prices.size, PredictorConfig.sma_window]
@@ -261,44 +283,41 @@ redis.subscribe(CHANNEL) do |on|
       warmed_up    = true
       pred         = EnsemblePredictor.predict(prices)
       pending_pred = { prediction: pred, window_prices: [] }
-
-      puts "Tick %5d  $%8.2f  [warmup done]" % [tick, price]
-      puts "  First prediction → high=$#{pred[:high]}  low=$#{pred[:low]}"
+      puts "Tick %5d  $%8.2f  [warmup done — first window open]" % [tick, price]
+      puts "  First prediction → h=$#{pred[:high]}  l=$#{pred[:low]}"
       next
     end
 
-    # ── Accumulate current window ──────────────────────────────────
+    # ── Accumulate current window ──────────────────────────────────────────
     pending_pred[:window_prices] << price
     progress = pending_pred[:window_prices].size
     pred     = pending_pred[:prediction]
 
-    puts "Tick %5d  $%8.2f  [%2d/#{WINDOW_SIZE}]  (pred high=$#{pred[:high]} low=$#{pred[:low]})" %
+    puts "Tick %5d  $%8.2f  [%2d/#{WINDOW_SIZE}]  pred h=$#{pred[:high]} l=$#{pred[:low]}" %
          [tick, price, progress]
 
     next unless progress >= WINDOW_SIZE
 
-    # ── Window closed — evaluate ───────────────────────────────────
+    # ── Window closed: evaluate, print verdict, tune ───────────────────────
     window_num += 1
     result = evaluate_window(window_num, pred, pending_pred[:window_prices])
 
-    puts "\n#{"─" * 60}"
-    puts "  Window #{result.window_num} result:"
-    puts "    Predicted  high=$%-8.2f  low=$%-.2f" % [result.predicted_high, result.predicted_low]
-    puts "    Actual     high=$%-8.2f  low=$%-.2f" % [result.actual_high, result.actual_low]
-    puts "    Error      high=%-8.2f  low=%-8.2f  mean=%.2f" % [result.high_err, result.low_err, result.mean_err]
-    puts "#{"─" * 60}"
+    print_window_result(result)
 
-    print "  [tuner] analyzing window #{window_num}..."
-    tuner_response = robot.run(tuner_prompt(result))
-    tuner_line     = tuner_response.reply.lines.first&.chomp || "(no response)"
-    puts "\r  [tuner] #{tuner_line}#{" " * 20}"
+    puts "  Tuning..."
+    begin
+      tuner_response = robot.run(tuner_prompt(result))
+      tuner_line     = tuner_response.reply.lines.first&.chomp || "(no response)"
+      puts "  → #{tuner_line}"
+    rescue StandardError => e
+      puts "  → Tuning skipped: #{e.message.lines.first&.chomp}"
+    end
     puts "  Params: #{PredictorConfig.summary}"
-    puts
+    puts "─" * 58
 
-    # ── Start next window ──────────────────────────────────────────
+    # ── Start next window ─────────────────────────────────────────────────
     new_pred     = EnsemblePredictor.predict(prices)
     pending_pred = { prediction: new_pred, window_prices: [] }
-    puts "  Next prediction → high=$#{new_pred[:high]}  low=$#{new_pred[:low]}"
-    puts
+    puts "Next prediction → h=$#{new_pred[:high]}  l=$#{new_pred[:low]}"
   end
 end
