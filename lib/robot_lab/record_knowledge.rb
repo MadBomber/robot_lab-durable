@@ -7,10 +7,10 @@ module RobotLab
                 'a user preference, a reliable pattern, or a factual insight. ' \
                 'Recorded knowledge persists across future sessions.'
 
-    param :content,   type: 'string', desc: 'The knowledge to record, in plain language (one clear statement)'
-    param :reasoning, type: 'string',
-                      desc: 'Why this is worth remembering — the observation or discussion that led to it'
-    param :category,  type: 'string', desc: 'One of: fact, preference, pattern, correction'
+    parameter :content,   type: 'string', description: 'The knowledge to record, in plain language (one clear statement)'
+    parameter :reasoning, type: 'string',
+                      description: 'Why this is worth remembering — the observation or discussion that led to it'
+    parameter :category,  type: 'string', description: 'One of: fact, preference, pattern, correction'
 
     def execute(content:, reasoning:, category:)
       adapter = RobotLab::Durable::Hook.current_adapter
