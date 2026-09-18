@@ -7,7 +7,7 @@ module RobotLab
                 'to check if you have seen a similar situation before. ' \
                 'When in doubt and no relevant knowledge is found, skip the action.'
 
-    param :query, type: 'string', desc: 'Natural language description of the decision you are about to make'
+    parameter :query, type: 'string', description: 'Natural language description of the decision you are about to make'
 
     def execute(query:)
       adapter = RobotLab::Durable::Hook.current_adapter

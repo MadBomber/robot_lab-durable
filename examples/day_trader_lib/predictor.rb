@@ -26,11 +26,15 @@ $LOAD_PATH.unshift File.expand_path('../../lib', __dir__)
 
 require "robot_lab"
 require "robot_lab/durable"
+require "ruby_llm/providers/lms"
 require "redis"
 require "json"
 
 DEBUG_MODE = ARGV.delete("--debug")
-RubyLLM.configure { |c| c.log_level = DEBUG_MODE ? Logger::DEBUG : Logger::WARN }
+RubyLLM.configure do |c|
+  c.log_level    = DEBUG_MODE ? Logger::DEBUG : Logger::WARN
+  c.lms_api_base = ENV.fetch("LMS_API_BASE", "http://localhost:1234/v1")
+end
 
 CHANNEL        = "stock:xyzzy"
 WINDOW_SIZE    = 12    # ticks per prediction window
@@ -128,12 +132,12 @@ class AdjustParameters < RobotLab::Tool
   description "Adjust one predictor parameter to improve future prediction accuracy. " \
               "Make at most one or two targeted changes per window."
 
-  param :parameter, type: "string",
-    desc: "Parameter to adjust: sma_window, sma_std_multiplier, ema_alpha, ema_vol_multiplier, sma_weight"
-  param :value, type: "number",
-    desc: "New value (sma_window: 3-30 int; std/vol multipliers: 0.5-4.0; ema_alpha: 0.05-0.5; sma_weight: 0.0-1.0)"
-  param :reasoning, type: "string",
-    desc: "Why this change should reduce prediction error"
+  parameter :parameter, type: "string",
+    description: "Parameter to adjust: sma_window, sma_std_multiplier, ema_alpha, ema_vol_multiplier, sma_weight"
+  parameter :value, type: "number",
+    description: "New value (sma_window: 3-30 int; std/vol multipliers: 0.5-4.0; ema_alpha: 0.05-0.5; sma_weight: 0.0-1.0)"
+  parameter :reasoning, type: "string",
+    description: "Why this change should reduce prediction error"
 
   LIMITS = {
     "sma_window"         => { min: 3,    max: 30,  integer: true  },
@@ -226,8 +230,8 @@ redis = Redis.new
 prices = []
 robot  = RobotLab.build(
            name:          "predictor_tuner",
-           model:         "gpt-4.1-mini",
-           provider:      :openai,
+           model:         ENV.fetch("LMS_MODEL", "qwen/qwen3.8-27b"),
+           provider:      :lms,
            system_prompt: <<~PROMPT,
              You are a quantitative analyst tuning an ensemble stock price range
              predictor for ticker XYZZY. Each prediction covers the high and low
