@@ -15,6 +15,8 @@
 # Prerequisites:
 #   Redis server running on localhost:6379
 #   PostgreSQL configured for HTM (see HTM gem setup)
+#   LM Studio server (tuner, tagging and embedding models — see the
+#   prerequisites in day_trader_lib/predictor.rb)
 #
 # Usage (from the robot_lab-durable root):
 #   ruby examples/01_day_trader.rb

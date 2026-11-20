@@ -18,6 +18,12 @@
 #   gem install redis
 #   Redis server running on localhost:6379
 #   PostgreSQL configured for HTM (see HTM gem setup)
+#   LM Studio server with the tuner, tagging and embedding models:
+#     LMS_MODEL        (default qwen/qwen3.8-27b) — load it with a context
+#                      window of 16k tokens or more (lms load <model> -c 16384);
+#                      recalled knowledge overflows LM Studio's 8192 default
+#     LMS_TAG_MODEL    (default openai/gpt-oss-20b)
+#     LMS_EMBED_MODEL  (default text-embedding-nomic-embed-text-v1.5)
 
 $stdout.sync = true   # flush every line immediately through the pipe
 
@@ -31,9 +37,36 @@ require "redis"
 require "json"
 
 DEBUG_MODE = ARGV.delete("--debug")
+
+# Loading RobotLab's config applies its own ruby_llm section to RubyLLM
+# (log level included), so force that load first; otherwise it happens
+# lazily on the first robot build and overrides the settings below.
+RobotLab.config
 RubyLLM.configure do |c|
   c.log_level    = DEBUG_MODE ? Logger::DEBUG : Logger::WARN
   c.lms_api_base = ENV.fetch("LMS_API_BASE", "http://localhost:1234/v1")
+end
+
+# HTM embeds and tags everything it stores or recalls. Route both through
+# the same LM Studio server the tuner uses, so the demo needs no other LLM
+# service. The embedding model's output size must match HTM's configured
+# embedding dimensions (768 for nomic-embed-text-v1.5).
+LMS_EMBED_MODEL = ENV.fetch("LMS_EMBED_MODEL", "text-embedding-nomic-embed-text-v1.5")
+LMS_TAG_MODEL   = ENV.fetch("LMS_TAG_MODEL", "openai/gpt-oss-20b")
+
+def lms_embedding(text)
+  RubyLLM.embed(text, model: LMS_EMBED_MODEL, provider: :lms, assume_model_exists: true).vectors
+end
+
+def lms_tags(config, text, ontology)
+  chat = RubyLLM.chat(model: LMS_TAG_MODEL, provider: :lms, assume_model_exists: true)
+  chat.with_instructions(config.build_tag_system_prompt)
+  config.parse_tag_response(chat.ask(config.build_tag_extraction_prompt(text, ontology)).content)
+end
+
+HTM.configure do |c|
+  c.embedding_generator = ->(text) { lms_embedding(text) }
+  c.tag_extractor       = ->(text, ontology = []) { lms_tags(c, text, ontology) }
 end
 
 CHANNEL        = "stock:xyzzy"

@@ -99,7 +99,7 @@ Calls `adapter.record(content:, reasoning:, category:)` to persist a new memory,
 
 `examples/01_day_trader.rb` demonstrates cross-session durable memory in action. It spawns a GBM stock price generator and an SMA+EMA ensemble predictor as subprocesses. Output is colour-coded `[GEN ]` / `[PRED]` per process, with a GOOD/MISS verdict printed for each prediction window. The durable agent tunes its prediction parameters across sessions, accumulating knowledge about what works.
 
-The demo needs a Redis server on `localhost:6379`, the `redis` gem (in this repo's development Gemfile group) and `ruby_llm-providers-lms` gem (installed with `robot_lab`), an LM Studio server (`LMS_API_BASE`, default `http://localhost:1234/v1`; model from `LMS_MODEL`), and PostgreSQL configured for HTM.
+The demo needs a Redis server on `localhost:6379`, the `redis` gem (in this repo's development Gemfile group) and `ruby_llm-providers-lms` gem (installed with `robot_lab`), an LM Studio server (`LMS_API_BASE`, default `http://localhost:1234/v1`), and PostgreSQL configured for HTM. LM Studio serves three models: the tuner (`LMS_MODEL`, default `qwen/qwen3.8-27b`, loaded with a context window of 16k tokens or more), and the ones the demo points HTM at for tagging (`LMS_TAG_MODEL`, default `openai/gpt-oss-20b`) and embedding (`LMS_EMBED_MODEL`, default `text-embedding-nomic-embed-text-v1.5`, whose 768 dimensions must match HTM's configured embedding dimensions). HTM's own embedding and tag provider settings are not used by the demo.
 
 ```
 ruby examples/01_day_trader.rb
