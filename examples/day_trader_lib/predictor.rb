@@ -254,10 +254,11 @@ robot  = RobotLab.build(
                4. If you observe a reliable pattern, call RecordKnowledge to preserve it.
                5. When uncertain, do nothing rather than guess.
            PROMPT
-           local_tools: [AdjustParameters,
-                         RobotLab::RecallKnowledge,
-                         RobotLab::RecordKnowledge]
+           local_tools: [AdjustParameters]
          )
+# The durable tools are attached as instances bound to the robot.
+robot.local_tools << RobotLab::RecallKnowledge.new(robot: robot)
+robot.local_tools << RobotLab::RecordKnowledge.new(robot: robot)
 robot.on(RobotLab::Durable::Hook)
 
 warmed_up    = false
@@ -310,7 +311,8 @@ redis.subscribe(CHANNEL) do |on|
 
     puts "  Tuning..."
     begin
-      tuner_response = robot.run(tuner_prompt(result))
+      # run() sends no tools by default; tools: :inherit sends the attached ones.
+      tuner_response = robot.run(tuner_prompt(result), tools: :inherit)
       tuner_line     = tuner_response.reply.lines.first&.chomp || "(no response)"
       puts "  → #{tuner_line}"
     rescue StandardError => e

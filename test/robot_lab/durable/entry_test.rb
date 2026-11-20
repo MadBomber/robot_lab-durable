@@ -10,7 +10,7 @@ module RobotLab
           'id'         => overrides.fetch(:id, 42),
           'content'    => overrides.fetch(:content, 'Always use keyword arguments'),
           'metadata'   => overrides.fetch(:metadata, { 'reasoning' => 'Clearer call sites', 'category' => 'preference' }),
-          'created_at' => overrides.fetch(:created_at, '2026-05-06T12:00:00Z')
+          'created_at' => overrides.fetch(:created_at, Time.utc(2026, 5, 6, 12))
         }
       end
 
@@ -46,8 +46,8 @@ module RobotLab
       end
 
       def test_from_node_sets_created_at
-        entry = Entry.from_node(build_node(created_at: '2026-01-01T00:00:00Z'))
-        assert_equal '2026-01-01T00:00:00Z', entry.created_at
+        entry = Entry.from_node(build_node(created_at: Time.utc(2026, 1, 1)))
+        assert_equal Time.utc(2026, 1, 1), entry.created_at
       end
 
       def test_entry_is_immutable

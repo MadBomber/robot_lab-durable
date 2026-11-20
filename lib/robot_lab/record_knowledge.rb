@@ -18,11 +18,21 @@ module RobotLab
 
       adapter.record(content: content, reasoning: reasoning, category: category)
 
-      # Update session memory so subsequent LLM calls in this run see the fact.
+      # Add the fact to the robot's session learnings (prepended to later runs).
       # HTM deduplicates by content hash, so the on_learn callback that follows is safe.
-      robot.learn(content)
+      learner&.learn(content)
 
       "Recorded: #{content}"
+    end
+
+    # The robot whose session learnings are updated: the tool's own robot when
+    # it was attached as an instance (RecordKnowledge.new(robot: robot)),
+    # otherwise the robot of the active durable run. A tool attached as a bare
+    # class has no robot of its own.
+    #
+    # @return [RobotLab::Robot, nil]
+    def learner
+      robot || RobotLab::Durable::Hook.current_robot
     end
   end
 end

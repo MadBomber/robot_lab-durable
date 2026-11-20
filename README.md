@@ -7,7 +7,7 @@ Cross-session durable memory for the [RobotLab](https://github.com/MadBomber/rob
 
 ## What it provides
 
-- **`Durable::Adapter`** — thin wrapper around an `HTM` instance; scoped to a robot by name. Exposes `record` and `recall` methods.
+- **`Durable::Adapter`** — thin wrapper around an `HTM` instance; created for a robot by name. Exposes `record` and `recall` methods.
 - **`Durable::Entry`** — presenter over raw HTM node hashes returned by recall. Provides typed fields: `node_id`, `content`, `reasoning`, `category`, `created_at`.
 - **`Durable::Hook`** — RobotLab hook handler that wires the `Adapter` lifecycle into `around_run` and `on_learn` automatically.
 - **`RecallKnowledge`** tool — lets a robot query its durable memory before answering.
@@ -47,11 +47,12 @@ robot = RobotLab.build(
 )
 robot.on(RobotLab::Durable::Hook)
 
-result = robot.run("What do you know about my risk tolerance?")
+# run() sends no tools by default — tools: :inherit sends the attached ones
+result = robot.run("What do you know about my risk tolerance?", tools: :inherit)
 puts result.last_text_content
 ```
 
-No `domain:` argument is required. HTM scopes all storage to the robot's `name` automatically.
+No `domain:` argument is required. The robot's `name` is passed to HTM as `robot_name`, which identifies the robot that stored each memory. HTM's long-term memory is shared, though: `recall` searches every stored node, not only those recorded by this robot.
 
 ## How It Works
 
@@ -59,7 +60,7 @@ No `domain:` argument is required. HTM scopes all storage to the robot's `name` 
 
 `RobotLab::Durable::Hook` is registered via `robot.on(...)` and plugs into two lifecycle events:
 
-- **`around_run`** — creates a thread-local `Adapter` instance keyed to `ctx.robot.name`, makes it available to tools for the duration of the run, and clears it in `ensure` so state never leaks across run boundaries.
+- **`around_run`** — creates a thread-local `Adapter` instance keyed to `ctx.robot.name`, makes it (and the running robot, via `Hook.current_robot`) available to tools for the duration of the run, and clears it in `ensure` so state never leaks across run boundaries.
 - **`on_learn`** — fires after each new session learning is stored in memory. When a durable session is active, persists the text via `adapter.record(content:, category: :observation)`.
 
 ### Adapter
@@ -68,8 +69,8 @@ No `domain:` argument is required. HTM scopes all storage to the robot's `name` 
 
 | Method | Description |
 |--------|-------------|
-| `record(content:, reasoning: nil, category: 'fact')` | Stores a memory entry. HTM deduplicates by SHA-256 content hash, so calling `record` with identical content is safe. |
-| `recall(query:, limit: 20, strategy: :hybrid)` | Searches stored memory and returns an array of `Entry` objects. |
+| `record(content:, reasoning: nil, category: 'fact')` | Stores a memory entry. HTM deduplicates by SHA-256 content hash, so calling `record` with identical content is safe — but the first write wins: a duplicate does not update the stored `reasoning` or `category`. |
+| `recall(query:, limit: 20, strategy: :hybrid)` | Searches stored memory and returns an array of `Entry` objects. HTM's recall rows carry no metadata, so `reasoning` and `category` are fetched with one extra lookup of the recalled node ids. |
 | `htm` | Direct access to the underlying `HTM` instance for advanced use. |
 
 ### Entry
@@ -78,25 +79,27 @@ No `domain:` argument is required. HTM scopes all storage to the robot's `name` 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `node_id` | String | Unique HTM node identifier |
+| `node_id` | Integer | Unique HTM node identifier |
 | `content` | String | The stored knowledge text |
 | `reasoning` | String / nil | Optional rationale recorded at write time |
 | `category` | Symbol | `:fact`, `:observation`, or any custom value |
-| `created_at` | Time | When the entry was first stored |
+| `created_at` | Time | When the entry was first stored — passed through unchanged from the HTM node |
 
 ## Tools
 
 ### RecallKnowledge
 
-Calls `Hook.current_adapter.recall(query:)` with the query text provided by the LLM and returns formatted entries. Uses the `:hybrid` strategy by default.
+Calls `Hook.current_adapter.recall(query:)` with the query text provided by the LLM and returns formatted entries (`[category] content — reasoning`; the reasoning part is omitted when none was stored). Uses the `:hybrid` strategy by default.
 
 ### RecordKnowledge
 
-Calls `adapter.record(content:, reasoning:, category:)` to persist a new memory, then calls `robot.learn(content)` to update session context. Because HTM deduplicates by content hash, no explicit double-write prevention is necessary.
+Calls `adapter.record(content:, reasoning:, category:)` to persist a new memory, then calls `robot.learn(content)` to update session context. The robot is the tool's own (`RobotLab::RecordKnowledge.new(robot: robot)`) or, when the tool was attached as a bare class, the robot of the active durable run (`Hook.current_robot`). Because HTM deduplicates by content hash, no explicit double-write prevention is necessary.
 
 ## Day Trader Demo
 
 `examples/01_day_trader.rb` demonstrates cross-session durable memory in action. It spawns a GBM stock price generator and an SMA+EMA ensemble predictor as subprocesses. Output is colour-coded `[GEN ]` / `[PRED]` per process, with a GOOD/MISS verdict printed for each prediction window. The durable agent tunes its prediction parameters across sessions, accumulating knowledge about what works.
+
+The demo needs a Redis server on `localhost:6379`, the `redis` gem (in this repo's development Gemfile group) and `ruby_llm-providers-lms` gem (installed with `robot_lab`), an LM Studio server (`LMS_API_BASE`, default `http://localhost:1234/v1`; model from `LMS_MODEL`), and PostgreSQL configured for HTM.
 
 ```
 ruby examples/01_day_trader.rb

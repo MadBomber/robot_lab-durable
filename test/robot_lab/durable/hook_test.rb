@@ -27,12 +27,36 @@ module RobotLab
     class HookTest < Minitest::Test
       def setup
         Thread.current[:robot_lab_durable_adapter] = nil
+        Thread.current[:robot_lab_durable_robot]   = nil
         @robot        = build_robot
         @fake_adapter = FakeAdapter.new
       end
 
       def teardown
         Thread.current[:robot_lab_durable_adapter] = nil
+        Thread.current[:robot_lab_durable_robot]   = nil
+      end
+
+      # ── current_robot ────────────────────────────────────────────────────────
+
+      def test_current_robot_is_nil_by_default
+        assert_nil Hook.current_robot
+      end
+
+      def test_around_run_sets_robot_during_block
+        robot_during_run = nil
+        run_with_fake_adapter { robot_during_run = Hook.current_robot }
+        assert_same @robot, robot_during_run
+      end
+
+      def test_around_run_clears_robot_after_block
+        run_with_fake_adapter { nil }
+        assert_nil Hook.current_robot
+      end
+
+      def test_around_run_clears_robot_when_block_raises
+        assert_raises(RuntimeError) { run_with_fake_adapter { raise 'boom' } }
+        assert_nil Hook.current_robot
       end
 
       # ── current_adapter ──────────────────────────────────────────────────────

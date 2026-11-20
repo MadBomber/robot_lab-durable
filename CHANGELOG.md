@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+### Fixed
+
+- **Recalled entries lost `reasoning` and `category`.** HTM's raw recall rows do not include the `metadata` column, so every `Entry` came back with `reasoning: nil` and `category: :fact`. `Adapter#recall` now fetches the recalled nodes' metadata with one extra query (`Adapter#metadata_for`, via `HTM::Models::Node`).
+- **`RecordKnowledge` attached as a bare class half-succeeded** — it wrote to HTM and then raised on `nil.learn`. The tool now falls back to the robot of the active durable run (new `Hook.current_robot`) and skips the `learn` step when no robot is available.
+- `RecallKnowledge` no longer prints a dangling ` — ` for entries stored without reasoning.
+- `examples/day_trader_lib/predictor.rb`: the durable tools are attached as instances and the run passes `tools: :inherit`, so the tuner's tools are actually offered to the model.
+
+### Changed
+
+- `Adapter.new` accepts an optional `node_source:` (defaults to `HTM::Models::Node`).
+- `redis` added to the development/test Gemfile group for the Day Trader example.
+- Gemspec description and `sig/robot_lab/durable.rbs` brought up to date with the current API.
+- Docs corrected against the code: `run()` needs `tools: :inherit`, HTM recall is not scoped per robot, `Entry` field types, first-write-wins metadata, and `:hybrid` strategy trade-offs.
+
 ## [0.6.1] - 2026-11-19
 
 ### Changed

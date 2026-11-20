@@ -10,11 +10,10 @@ Gem::Specification.new do |spec|
 
   spec.summary     = 'HTM-backed long-term memory for RobotLab agents'
   spec.description = 'Provides RobotLab::Durable — an adapter between robot_lab and the HTM gem ' \
-                     '(Hierarchical Temporal Memory). Replaces the former YAML store with ' \
-                     'PostgreSQL-backed long-term memory featuring vector embeddings, hybrid ' \
-                     'semantic search, hierarchical tagging, and multi-robot federation. ' \
-                     'Includes RecallKnowledge and RecordKnowledge tools that integrate ' \
-                     'directly into Robot when robot_lab is present.'
+                     '(Hierarchical Temporal Memory). Robots record knowledge during a run and ' \
+                     'recall it in later sessions from PostgreSQL-backed long-term memory using ' \
+                     'vector, full-text, or hybrid search. Includes a Hook that manages the ' \
+                     'adapter per run and RecallKnowledge and RecordKnowledge tools for robots.'
   spec.homepage = 'https://github.com/MadBomber/robot_lab-durable'
   spec.license  = 'MIT'
 
