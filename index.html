@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -1162,7 +1162,7 @@ This gem is under active development. APIs may change without notice.</p>
 </blockquote>
 <h2 id="what-it-provides">What it provides<a class="headerlink" href="#what-it-provides" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><code>Durable::Adapter</code></strong> — thin wrapper around an <code>HTM</code> instance; scoped to a robot by name. Exposes <code>record</code> and <code>recall</code> methods plus direct <code>htm</code> access.</li>
+<li><strong><code>Durable::Adapter</code></strong> — thin wrapper around an <code>HTM</code> instance; created for a robot by name. Exposes <code>record</code> and <code>recall</code> methods plus direct <code>htm</code> access.</li>
 <li><strong><code>Durable::Entry</code></strong> — presenter over raw HTM node hashes returned by recall. Provides typed fields.</li>
 <li><strong><code>Durable::Hook</code></strong> — RobotLab hook handler that wires the <code>Adapter</code> lifecycle into <code>around_run</code> and <code>on_learn</code> automatically.</li>
 <li><strong><code>RecallKnowledge</code></strong> tool — lets a robot query its durable memory before answering.</li>
@@ -1175,27 +1175,28 @@ This gem is under active development. APIs may change without notice.</p>
 <li>The <code>robot_lab</code> gem.</li>
 </ul>
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
-<div class="language-ruby highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">gem</span><span class="w"> </span><span class="s2">&quot;robot_lab&quot;</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">gem</span><span class="w"> </span><span class="s2">&quot;robot_lab-durable&quot;</span>
+<div class="language-ruby highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">gem</span><span class="w"> </span><span class="s2">"robot_lab"</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">gem</span><span class="w"> </span><span class="s2">"robot_lab-durable"</span>
 </span></code></pre></div>
 <h2 id="quick-example">Quick Example<a class="headerlink" href="#quick-example" title="Permanent link">&para;</a></h2>
-<div class="language-ruby highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;robot_lab&quot;</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;robot_lab/durable&quot;</span>
+<div class="language-ruby highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">require</span><span class="w"> </span><span class="s2">"robot_lab"</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">require</span><span class="w"> </span><span class="s2">"robot_lab/durable"</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">robot</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">RobotLab</span><span class="o">.</span><span class="n">build</span><span class="p">(</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nb">name</span><span class="p">:</span><span class="w">          </span><span class="s2">&quot;advisor&quot;</span><span class="p">,</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="ss">system_prompt</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;You are a financial advisor.&quot;</span><span class="p">,</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nb">name</span><span class="p">:</span><span class="w">          </span><span class="s2">"advisor"</span><span class="p">,</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="ss">system_prompt</span><span class="p">:</span><span class="w"> </span><span class="s2">"You are a financial advisor."</span><span class="p">,</span>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="ss">local_tools</span><span class="p">:</span><span class="w">   </span><span class="o">[</span><span class="no">RobotLab</span><span class="o">::</span><span class="no">RecallKnowledge</span><span class="p">,</span><span class="w"> </span><span class="no">RobotLab</span><span class="o">::</span><span class="no">RecordKnowledge</span><span class="o">]</span>
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="p">)</span>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">robot</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="no">RobotLab</span><span class="o">::</span><span class="no">Durable</span><span class="o">::</span><span class="no">Hook</span><span class="p">)</span>
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">robot</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&quot;What do you know about my risk tolerance?&quot;</span><span class="p">)</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="nb">puts</span><span class="w"> </span><span class="n">result</span><span class="o">.</span><span class="n">last_text_content</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="c1"># run() sends no tools by default — tools: :inherit sends the attached ones</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">robot</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">"What do you know about my risk tolerance?"</span><span class="p">,</span><span class="w"> </span><span class="ss">tools</span><span class="p">:</span><span class="w"> </span><span class="ss">:inherit</span><span class="p">)</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="nb">puts</span><span class="w"> </span><span class="n">result</span><span class="o">.</span><span class="n">last_text_content</span>
 </span></code></pre></div>
-<p>No <code>domain:</code> argument is required. HTM scopes all storage to the robot's <code>name</code> automatically.</p>
+<p>No <code>domain:</code> argument is required. The robot's <code>name</code> is passed to HTM as <code>robot_name</code>, which identifies the robot that stored each memory. HTM's long-term memory is shared, though: <code>recall</code> searches every stored node, not only those recorded by this robot.</p>
 <hr />
 <h2 id="adapter-api">Adapter API<a class="headerlink" href="#adapter-api" title="Permanent link">&para;</a></h2>
-<p><code>Durable::Adapter</code> is initialised by <code>Hook#around_run</code> for each run and stored as a thread-local. It wraps <code>HTM.new(robot_name: name)</code>.</p>
+<p><code>Durable::Adapter</code> is initialised by <code>Hook.around_run</code> for each run and stored as a thread-local. It wraps <code>HTM.new(robot_name: name)</code>.</p>
 <table>
 <thead>
 <tr>
@@ -1210,13 +1211,19 @@ This gem is under active development. APIs may change without notice.</p>
 <td><code>record</code></td>
 <td><code>content:</code> (String, required), <code>reasoning:</code> (String, optional), <code>category:</code> (String/Symbol, default <code>'fact'</code>)</td>
 <td>Integer (HTM node_id)</td>
-<td>Calls <code>htm.remember(content, metadata: { reasoning:, category: })</code>. HTM deduplicates by SHA-256 content hash — safe to call with the same content multiple times.</td>
+<td>Calls <code>htm.remember(content, metadata: { reasoning:, category: })</code>. HTM deduplicates by SHA-256 content hash — safe to call with the same content multiple times. First write wins: a duplicate returns the existing node id and does not update its stored <code>reasoning</code> or <code>category</code>.</td>
 </tr>
 <tr>
 <td><code>recall</code></td>
 <td><code>query:</code> (String, required), <code>limit:</code> (Integer, default 20), <code>strategy:</code> (Symbol, default <code>:hybrid</code>)</td>
 <td><code>Array&lt;Entry&gt;</code></td>
-<td>Calls <code>htm.recall(query, limit:, strategy:, raw: true)</code> then wraps each result in <code>Entry.from_node</code>.</td>
+<td>Calls <code>htm.recall(query, limit:, strategy:, raw: true)</code>, looks up the recalled nodes' metadata via <code>metadata_for</code> (HTM's raw recall rows do not include it), then wraps each result in <code>Entry.from_node</code>.</td>
+</tr>
+<tr>
+<td><code>metadata_for</code></td>
+<td><code>node_ids</code> (Array of Integer)</td>
+<td><code>Hash</code> of node id =&gt; metadata Hash</td>
+<td>One query: <code>HTM::Models::Node.where(id: node_ids).select_map(%i[id metadata])</code>. Returns <code>{}</code> without querying when <code>node_ids</code> is empty.</td>
 </tr>
 <tr>
 <td><code>htm</code></td>
@@ -1229,15 +1236,15 @@ This gem is under active development. APIs may change without notice.</p>
 <h3 id="accessing-the-current-adapter">Accessing the current adapter<a class="headerlink" href="#accessing-the-current-adapter" title="Permanent link">&para;</a></h3>
 <div class="language-ruby highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">adapter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">RobotLab</span><span class="o">::</span><span class="no">Durable</span><span class="o">::</span><span class="no">Hook</span><span class="o">.</span><span class="n">current_adapter</span>
 </span></code></pre></div>
-<p>Returns the <code>Adapter</code> for the current thread, or <code>nil</code> when called outside an active <code>around_run</code>. Useful for direct access from custom tools or middleware.</p>
+<p>Returns the <code>Adapter</code> for the current thread, or <code>nil</code> when called outside an active <code>around_run</code>. Useful for direct access from custom tools or middleware. <code>RobotLab::Durable::Hook.current_robot</code> likewise returns the robot whose run is active (or <code>nil</code>).</p>
 <h3 id="direct-htm-access">Direct HTM access<a class="headerlink" href="#direct-htm-access" title="Permanent link">&para;</a></h3>
 <div class="language-ruby highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">adapter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">RobotLab</span><span class="o">::</span><span class="no">Durable</span><span class="o">::</span><span class="no">Hook</span><span class="o">.</span><span class="n">current_adapter</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">raw_nodes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">adapter</span><span class="o">.</span><span class="n">htm</span><span class="o">.</span><span class="n">recall</span><span class="p">(</span><span class="s2">&quot;risk tolerance&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">strategy</span><span class="p">:</span><span class="w"> </span><span class="ss">:vector</span><span class="p">,</span><span class="w"> </span><span class="ss">raw</span><span class="p">:</span><span class="w"> </span><span class="kp">true</span><span class="p">)</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">raw_nodes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">adapter</span><span class="o">.</span><span class="n">htm</span><span class="o">.</span><span class="n">recall</span><span class="p">(</span><span class="s2">"risk tolerance"</span><span class="p">,</span><span class="w"> </span><span class="ss">strategy</span><span class="p">:</span><span class="w"> </span><span class="ss">:vector</span><span class="p">,</span><span class="w"> </span><span class="ss">raw</span><span class="p">:</span><span class="w"> </span><span class="kp">true</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Use <code>adapter.htm</code> when you need HTM operations not exposed through <code>Adapter</code>, such as bulk deletion or direct node inspection.</p>
 <hr />
 <h2 id="entry-fields">Entry Fields<a class="headerlink" href="#entry-fields" title="Permanent link">&para;</a></h2>
-<p><code>Durable::Entry</code> is constructed via <code>Entry.from_node(node)</code> from a raw HTM node hash. HTM nodes use string keys (not symbols), so <code>from_node</code> reads <code>node['id']</code>, not <code>node[:id]</code>.</p>
+<p><code>Durable::Entry</code> is constructed via <code>Entry.from_node(node)</code> from a raw HTM node hash. HTM nodes use string keys (not symbols), so <code>from_node</code> reads <code>node['id']</code>, not <code>node[:id]</code>. HTM's raw recall rows have no <code>'metadata'</code> key; <code>Adapter#recall</code> merges it in from a separate lookup before calling <code>from_node</code>. A node with no stored metadata yields <code>reasoning: nil</code> and <code>category: :fact</code>.</p>
 <table>
 <thead>
 <tr>
@@ -1263,7 +1270,7 @@ This gem is under active development. APIs may change without notice.</p>
 <tr>
 <td><code>reasoning</code></td>
 <td>String / nil</td>
-<td>Optional rationale recorded at write time</td>
+<td>Optional rationale recorded at write time (by the first write of that content)</td>
 <td><code>node['metadata']['reasoning']</code></td>
 </tr>
 <tr>
@@ -1274,8 +1281,8 @@ This gem is under active development. APIs may change without notice.</p>
 </tr>
 <tr>
 <td><code>created_at</code></td>
-<td>String</td>
-<td>Raw timestamp as returned by HTM (e.g. <code>'2026-05-06T12:00:00Z'</code>) — not parsed into a <code>Time</code> object</td>
+<td>Time</td>
+<td>Timestamp exactly as returned by HTM (a <code>Time</code> from the PostgreSQL <code>created_at</code> column) — <code>Entry</code> passes it through without parsing or converting it</td>
 <td><code>node['created_at']</code></td>
 </tr>
 </tbody>
@@ -1287,24 +1294,24 @@ This gem is under active development. APIs may change without notice.</p>
 <ol>
 <li>Reads <code>ctx.robot.name</code> from the run context.</li>
 <li>Instantiates <code>Durable::Adapter.new(robot_name: name)</code>, which in turn creates <code>HTM.new(robot_name: name)</code>.</li>
-<li>Stores the adapter as a thread-local so tools can reach it via <code>Hook.current_adapter</code>.</li>
+<li>Stores the adapter and the robot as thread-locals so tools can reach them via <code>Hook.current_adapter</code> and <code>Hook.current_robot</code>.</li>
 <li>Yields to execute the actual robot run.</li>
-<li>In <code>ensure</code>, clears the thread-local adapter so state never leaks to subsequent runs on the same thread.</li>
+<li>In <code>ensure</code>, clears the thread-local adapter and robot so state never leaks to subsequent runs on the same thread.</li>
 </ol>
 <h3 id="on_learn">on_learn<a class="headerlink" href="#on_learn" title="Permanent link">&para;</a></h3>
 <p>Fires after each call to <code>robot.learn(text)</code>, but only persists when both of these hold:</p>
 <ol>
-<li><code>ctx.stored</code> is true — <code>robot.learn</code> sets this only when the text was actually added to the robot's in-memory <code>@learnings</code> list. If <code>text</code> is a substring of an existing learning (or vice versa, see <code>robot.learn</code>'s dedup rule in <code>robot_lab</code> core), <code>ctx.stored</code> stays <code>false</code> and <code>on_learn</code> returns early without recording.</li>
+<li><code>ctx.stored</code> is true — <code>robot.learn</code> sets this only when the text was actually added to the robot's in-memory <code>@learnings</code> list. If <code>text</code> is a substring of an existing learning, <code>ctx.stored</code> stays <code>false</code> and <code>on_learn</code> returns early without recording. (In the reverse case — an existing learning is a substring of <code>text</code> — <code>robot.learn</code> drops the shorter learning and stores <code>text</code>, so <code>ctx.stored</code> is <code>true</code>; see <code>robot.learn</code>'s dedup rule in <code>robot_lab</code> core.)</li>
 <li>A durable session is active (<code>Hook.current_adapter</code> is non-nil).</li>
 </ol>
 <p>When both hold, calls:</p>
 <div class="language-ruby highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">adapter</span><span class="o">.</span><span class="n">record</span><span class="p">(</span><span class="ss">content</span><span class="p">:</span><span class="w"> </span><span class="n">ctx</span><span class="o">.</span><span class="n">text</span><span class="p">,</span><span class="w"> </span><span class="ss">category</span><span class="p">:</span><span class="w"> </span><span class="ss">:observation</span><span class="p">)</span>
 </span></code></pre></div>
-<p>This persists the learning immediately. HTM's content-hash deduplication ensures that re-seeding the same fact across sessions does not create duplicate entries.</p>
+<p>This persists the learning immediately. HTM's content-hash deduplication ensures that re-seeding the same fact across sessions does not create duplicate entries. Because the first write of a given content fixes its metadata, text that first reaches HTM through <code>on_learn</code> stays categorised as <code>observation</code> even if <code>RecordKnowledge</code> later records the same text under another category.</p>
 <h3 id="enabling-the-hook">Enabling the hook<a class="headerlink" href="#enabling-the-hook" title="Permanent link">&para;</a></h3>
 <div class="language-ruby highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">robot</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="no">RobotLab</span><span class="o">::</span><span class="no">Durable</span><span class="o">::</span><span class="no">Hook</span><span class="p">)</span>
 </span></code></pre></div>
-<p>No additional context keys are required. HTM scopes storage to the robot name automatically.</p>
+<p>No additional context keys are required. The adapter is created from the robot's name automatically.</p>
 <hr />
 <h2 id="tools">Tools<a class="headerlink" href="#tools" title="Permanent link">&para;</a></h2>
 <h3 id="recallknowledge">RecallKnowledge<a class="headerlink" href="#recallknowledge" title="Permanent link">&para;</a></h3>
@@ -1328,7 +1335,7 @@ This gem is under active development. APIs may change without notice.</p>
 </tbody>
 </table>
 <p><code>limit</code> and <code>strategy</code> are not exposed as tool parameters — the tool always calls <code>adapter.recall</code> with its defaults (<code>limit: 20</code>, <code>strategy: :hybrid</code>). Use <code>Hook.current_adapter</code> directly (see <a href="#adapter-api">Adapter API</a>) if you need to control those.</p>
-<p>Returns formatted text entries (<code>"[category] content — reasoning"</code>, one per line, prefixed with <code>"Relevant past knowledge:"</code>) when matches are found. Returns <code>"No relevant past knowledge found for: &lt;query&gt;. When in doubt, skip."</code> when the recall is empty, or <code>"No durable session active on this robot."</code> when no <code>Hook.current_adapter</code> is active (e.g. the hook wasn't registered with <code>robot.on</code>).</p>
+<p>Returns formatted text entries (<code>"[category] content — reasoning"</code>, one per line, prefixed with <code>"Relevant past knowledge:"</code>) when matches are found; the <code>" — reasoning"</code> part is omitted for entries stored without reasoning. Returns <code>"No relevant past knowledge found for: &lt;query&gt;. When in doubt, skip."</code> when the recall is empty, or <code>"No durable session active on this robot."</code> when no <code>Hook.current_adapter</code> is active (e.g. the hook wasn't registered with <code>robot.on</code>).</p>
 <p>Implementation calls:</p>
 <div class="language-ruby highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="no">Hook</span><span class="o">.</span><span class="n">current_adapter</span><span class="o">.</span><span class="n">recall</span><span class="p">(</span><span class="ss">query</span><span class="p">:</span><span class="w"> </span><span class="n">query</span><span class="p">)</span>
 </span></code></pre></div>
@@ -1364,13 +1371,13 @@ This gem is under active development. APIs may change without notice.</p>
 </tr>
 </tbody>
 </table>
-<p>All three are required — neither <code>param</code> (which defaults to <code>required: true</code>) nor the tool's <code>execute(content:, reasoning:, category:)</code> signature declares a default. (The <code>'fact'</code> default described in the <a href="#adapter-api">Adapter API</a> applies only when calling <code>Adapter#record</code> directly, not through this tool.)</p>
+<p>All three are required — neither <code>parameter</code> (which defaults to <code>required: true</code>) nor the tool's <code>execute(content:, reasoning:, category:)</code> signature declares a default. (The <code>'fact'</code> default described in the <a href="#adapter-api">Adapter API</a> applies only when calling <code>Adapter#record</code> directly, not through this tool.)</p>
 <p>Returns <code>"Recorded: &lt;content&gt;"</code> on success, or <code>"No durable session active on this robot."</code> when no <code>Hook.current_adapter</code> is active.</p>
 <p>Implementation calls:</p>
 <div class="language-ruby highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">adapter</span><span class="o">.</span><span class="n">record</span><span class="p">(</span><span class="ss">content</span><span class="p">:</span><span class="w"> </span><span class="n">content</span><span class="p">,</span><span class="w"> </span><span class="ss">reasoning</span><span class="p">:</span><span class="w"> </span><span class="n">reasoning</span><span class="p">,</span><span class="w"> </span><span class="ss">category</span><span class="p">:</span><span class="w"> </span><span class="n">category</span><span class="p">)</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">robot</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">learner</span><span class="o">&amp;.</span><span class="n">learn</span><span class="p">(</span><span class="n">content</span><span class="p">)</span><span class="w">   </span><span class="c1"># learner = robot || Hook.current_robot</span>
 </span></code></pre></div>
-<p><code>robot.learn</code> updates the current session context so the LLM has immediate access to the new knowledge without waiting for the next run. Because HTM deduplicates by content hash, the subsequent <code>on_learn</code> callback does not produce a duplicate entry.</p>
+<p><code>robot.learn</code> adds the content to the robot's in-memory learnings, which <code>robot_lab</code> prepends to the user message on each later <code>run()</code> of the same robot object. It is called on the tool's own robot when the tool was attached as an instance (<code>RobotLab::RecordKnowledge.new(robot: robot)</code>), otherwise on the robot of the active durable run (<code>Hook.current_robot</code>) — so attaching the bare class works. Because HTM deduplicates by content hash, the subsequent <code>on_learn</code> callback does not produce a duplicate entry.</p>
 <hr />
 <h2 id="htm-recall-strategies">HTM Recall Strategies<a class="headerlink" href="#htm-recall-strategies" title="Permanent link">&para;</a></h2>
 <table>
@@ -1384,8 +1391,8 @@ This gem is under active development. APIs may change without notice.</p>
 <tbody>
 <tr>
 <td><code>:hybrid</code></td>
-<td>Combines vector similarity and full-text scoring</td>
-<td>General use — recommended default</td>
+<td>Retrieves full-text and tag candidates, re-ranks them by vector similarity, and merges the rankings (Reciprocal Rank Fusion)</td>
+<td>General use — the adapter's default. Can miss memories that are semantically related but share no keyword or tag with the query; use <code>:vector</code> for those</td>
 </tr>
 <tr>
 <td><code>:vector</code></td>
@@ -1405,9 +1412,10 @@ This gem is under active development. APIs may change without notice.</p>
 <p>It spawns two subprocesses:</p>
 <ul>
 <li><strong><code>[GEN ]</code></strong> — GBM (Geometric Brownian Motion) stock price generator.</li>
-<li><strong><code>[PRED]</code></strong> — SMA+EMA ensemble predictor that issues directional forecasts.</li>
+<li><strong><code>[PRED]</code></strong> — SMA+EMA ensemble predictor that forecasts each window's high/low price range.</li>
 </ul>
-<p>Each prediction window receives a GOOD / MISS verdict printed to the terminal. The durable agent accumulates parameter tuning knowledge across sessions: window sizes, smoothing factors, and signal thresholds that worked well in past runs are recalled and applied, improving prediction accuracy over time.</p>
+<p>Each prediction window receives a GOOD / MISS verdict printed to the terminal. The durable agent accumulates parameter tuning knowledge across sessions: window sizes, smoothing factors, and band multipliers that worked well in past runs are recalled and applied, improving prediction accuracy over time.</p>
+<p>The demo needs a Redis server on <code>localhost:6379</code>, the <code>redis</code> gem (in this repo's development Gemfile group) and <code>ruby_llm-providers-lms</code> gem (installed with <code>robot_lab</code>), an LM Studio server (<code>LMS_API_BASE</code>, default <code>http://localhost:1234/v1</code>; model from <code>LMS_MODEL</code>), and PostgreSQL configured for HTM.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>ruby examples/01_day_trader.rb
 </span></code></pre></div>
 <hr />
@@ -1415,32 +1423,32 @@ This gem is under active development. APIs may change without notice.</p>
 <p>v0.3.0 replaces the YAML file store, the <code>Durable::Store</code> class, the <code>Durable::Reflector</code>, the <code>Durable::Learning</code> mixin, and the <code>skip_persist</code> mechanism with a direct adapter over the <code>htm</code> gem. All domain/confidence concepts are gone.</p>
 <h3 id="gemfile">Gemfile<a class="headerlink" href="#gemfile" title="Permanent link">&para;</a></h3>
 <div class="language-ruby highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Before</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">gem</span><span class="w"> </span><span class="s2">&quot;robot_lab-durable&quot;</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">gem</span><span class="w"> </span><span class="s2">"robot_lab-durable"</span>
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># After — htm gem is required; ensure PostgreSQL + pgvector are available</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">gem</span><span class="w"> </span><span class="s2">&quot;robot_lab-durable&quot;</span>
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="n">gem</span><span class="w"> </span><span class="s2">&quot;htm&quot;</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># After — htm is installed automatically as a dependency of robot_lab-durable;</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1"># ensure PostgreSQL + pgvector are available</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="n">gem</span><span class="w"> </span><span class="s2">"robot_lab-durable"</span>
 </span></code></pre></div>
 <h3 id="registering-the-hook">Registering the hook<a class="headerlink" href="#registering-the-hook" title="Permanent link">&para;</a></h3>
 <div class="language-ruby highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Before (v0.2.x)</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">robot</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="no">RobotLab</span><span class="o">::</span><span class="no">Durable</span><span class="o">::</span><span class="no">Hook</span><span class="p">,</span><span class="w"> </span><span class="ss">context</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="ss">domain</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;finance&quot;</span><span class="w"> </span><span class="p">})</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">robot</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="no">RobotLab</span><span class="o">::</span><span class="no">Durable</span><span class="o">::</span><span class="no">Hook</span><span class="p">,</span><span class="w"> </span><span class="ss">context</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="ss">domain</span><span class="p">:</span><span class="w"> </span><span class="s2">"finance"</span><span class="w"> </span><span class="p">})</span>
 </span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># After (v0.3.0) — no domain argument; scoped by robot name automatically</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># After (v0.3.0) — no domain argument; the adapter is created from the robot's name</span>
 </span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="n">robot</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="no">RobotLab</span><span class="o">::</span><span class="no">Durable</span><span class="o">::</span><span class="no">Hook</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="building-a-robot">Building a robot<a class="headerlink" href="#building-a-robot" title="Permanent link">&para;</a></h3>
 <div class="language-ruby highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Before (v0.2.x)</span>
 </span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">robot</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">RobotLab</span><span class="o">.</span><span class="n">build</span><span class="p">(</span>
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span><span class="nb">name</span><span class="p">:</span><span class="w">         </span><span class="s2">&quot;advisor&quot;</span><span class="p">,</span>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span><span class="ss">system_prompt</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span><span class="nb">name</span><span class="p">:</span><span class="w">         </span><span class="s2">"advisor"</span><span class="p">,</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span><span class="ss">system_prompt</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">,</span>
 </span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">  </span><span class="ss">learn</span><span class="p">:</span><span class="w">        </span><span class="kp">true</span><span class="p">,</span>
-</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">  </span><span class="ss">learn_domain</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;finance&quot;</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">  </span><span class="ss">learn_domain</span><span class="p">:</span><span class="w"> </span><span class="s2">"finance"</span>
 </span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="p">)</span>
 </span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>
 </span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="c1"># After (v0.3.0) — learn: / learn_domain: removed; use tools + hook instead</span>
 </span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="n">robot</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">RobotLab</span><span class="o">.</span><span class="n">build</span><span class="p">(</span>
-</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="w">  </span><span class="nb">name</span><span class="p">:</span><span class="w">          </span><span class="s2">&quot;advisor&quot;</span><span class="p">,</span>
-</span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="w">  </span><span class="ss">system_prompt</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="w">  </span><span class="nb">name</span><span class="p">:</span><span class="w">          </span><span class="s2">"advisor"</span><span class="p">,</span>
+</span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="w">  </span><span class="ss">system_prompt</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">,</span>
 </span><span id="__span-11-13"><a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="w">  </span><span class="ss">local_tools</span><span class="p">:</span><span class="w">   </span><span class="o">[</span><span class="no">RobotLab</span><span class="o">::</span><span class="no">RecallKnowledge</span><span class="p">,</span><span class="w"> </span><span class="no">RobotLab</span><span class="o">::</span><span class="no">RecordKnowledge</span><span class="o">]</span>
 </span><span id="__span-11-14"><a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="p">)</span>
 </span><span id="__span-11-15"><a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a><span class="n">robot</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="no">RobotLab</span><span class="o">::</span><span class="no">Durable</span><span class="o">::</span><span class="no">Hook</span><span class="p">)</span>
@@ -1569,10 +1577,10 @@ This gem is under active development. APIs may change without notice.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.path", "navigation.indexes", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "header.autohide", "content.code.copy", "content.code.annotate", "content.tabs.link", "content.tooltips", "content.action.edit", "content.action.view"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.path", "navigation.indexes", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "header.autohide", "content.code.copy", "content.code.annotate", "content.tabs.link", "content.tooltips", "content.action.edit", "content.action.view"], "search": "assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>
