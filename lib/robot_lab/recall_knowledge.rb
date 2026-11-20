@@ -18,9 +18,19 @@ module RobotLab
       if entries.empty?
         "No relevant past knowledge found for: #{query}. When in doubt, skip."
       else
-        lines = entries.map { |e| "[#{e.category}] #{e.content} — #{e.reasoning}" }
-        "Relevant past knowledge:\n#{lines.join("\n")}"
+        "Relevant past knowledge:\n#{entries.map { |entry| format_entry(entry) }.join("\n")}"
       end
+    end
+
+    # One line per entry: "[category] content — reasoning". The reasoning part
+    # is omitted when the entry has none (e.g. learnings persisted by on_learn).
+    #
+    # @param entry [RobotLab::Durable::Entry]
+    # @return [String]
+    def format_entry(entry)
+      reasoning = entry.reasoning.to_s
+      line      = "[#{entry.category}] #{entry.content}"
+      reasoning.empty? ? line : "#{line} — #{reasoning}"
     end
   end
 end

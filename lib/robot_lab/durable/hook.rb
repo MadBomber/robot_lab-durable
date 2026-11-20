@@ -9,11 +9,14 @@ module RobotLab
         # Initialize an HTM-backed adapter for the robot and make it available
         # thread-locally for the duration of the run, then tear it down.
         def around_run(ctx, &block)
-          robot_name = ctx.robot.name || 'default'
+          robot      = ctx.robot
+          robot_name = robot.name || 'default'
           set_adapter(Adapter.new(robot_name: robot_name))
+          set_robot(robot)
           block.call
         ensure
           clear_adapter
+          clear_robot
         end
 
         # Persist new session learnings to HTM long-term memory.
@@ -33,7 +36,20 @@ module RobotLab
           Thread.current[:robot_lab_durable_adapter]
         end
 
+        # Returns the robot whose durable run is active on the current thread, or nil.
+        def current_robot
+          Thread.current[:robot_lab_durable_robot]
+        end
+
         private
+
+        def set_robot(robot)
+          Thread.current[:robot_lab_durable_robot] = robot
+        end
+
+        def clear_robot
+          Thread.current[:robot_lab_durable_robot] = nil
+        end
 
         def set_adapter(adapter)
           Thread.current[:robot_lab_durable_adapter] = adapter

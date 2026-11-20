@@ -1,6 +1,43 @@
 module RobotLab
   module Durable
     VERSION: String
-    # See the writing guide of rbs: https://github.com/ruby/rbs#guides
+
+    class Entry
+      attr_reader node_id: Integer
+      attr_reader content: String
+      attr_reader reasoning: String?
+      attr_reader category: Symbol
+      attr_reader created_at: Time
+
+      def self.from_node: (Hash[String, untyped] node) -> Entry
+    end
+
+    class Adapter
+      attr_reader htm: untyped
+
+      def initialize: (robot_name: String, ?node_source: untyped) -> void
+      def recall: (query: String, ?limit: Integer, ?strategy: Symbol) -> Array[Entry]
+      def record: (content: String, ?reasoning: String?, ?category: String | Symbol) -> Integer
+      def metadata_for: (Array[Integer] node_ids) -> Hash[Integer, Hash[String, untyped]]
+      def node_source: () -> untyped
+      def with_metadata: (Hash[String, untyped] node, Hash[Integer, Hash[String, untyped]] metadata) -> Hash[String, untyped]
+    end
+
+    class Hook < RobotLab::Hook
+      def self.around_run: (untyped ctx) { () -> untyped } -> untyped
+      def self.on_learn: (untyped ctx) -> void
+      def self.current_adapter: () -> Adapter?
+      def self.current_robot: () -> untyped
+    end
+  end
+
+  class RecallKnowledge < Tool
+    def execute: (query: String) -> String
+    def format_entry: (Durable::Entry entry) -> String
+  end
+
+  class RecordKnowledge < Tool
+    def execute: (content: String, reasoning: String, category: String) -> String
+    def learner: () -> untyped
   end
 end
