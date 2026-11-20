@@ -195,7 +195,7 @@ It spawns two subprocesses:
 
 Each prediction window receives a GOOD / MISS verdict printed to the terminal. The durable agent accumulates parameter tuning knowledge across sessions: window sizes, smoothing factors, and band multipliers that worked well in past runs are recalled and applied, improving prediction accuracy over time.
 
-The demo needs a Redis server on `localhost:6379`, the `redis` gem (in this repo's development Gemfile group) and `ruby_llm-providers-lms` gem (installed with `robot_lab`), an LM Studio server (`LMS_API_BASE`, default `http://localhost:1234/v1`; model from `LMS_MODEL`), and PostgreSQL configured for HTM.
+The demo needs a Redis server on `localhost:6379`, the `redis` gem (in this repo's development Gemfile group) and `ruby_llm-providers-lms` gem (installed with `robot_lab`), an LM Studio server (`LMS_API_BASE`, default `http://localhost:1234/v1`), and PostgreSQL configured for HTM. LM Studio serves three models: the tuner (`LMS_MODEL`, default `qwen/qwen3.8-27b`, loaded with a context window of 16k tokens or more), and the ones the demo points HTM at for tagging (`LMS_TAG_MODEL`, default `openai/gpt-oss-20b`) and embedding (`LMS_EMBED_MODEL`, default `text-embedding-nomic-embed-text-v1.5`, whose 768 dimensions must match HTM's configured embedding dimensions). HTM's own embedding and tag provider settings are not used by the demo.
 
 ```
 ruby examples/01_day_trader.rb
